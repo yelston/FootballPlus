@@ -34,6 +34,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useIsMobile } from '@/lib/hooks/use-media-query'
+import type { Database } from '@/types/database'
+
+type AttendanceRow = Database['public']['Tables']['attendance']['Row']
 
 interface Team {
   id: string
@@ -100,6 +103,7 @@ export function AttendanceDialog({
     const { data } = await supabase
       .from('attendance')
       .select('id, playerId, points')
+      .returns<Pick<AttendanceRow, 'id' | 'playerId' | 'points'>[]>()
       .eq('date', dateString)
 
     const records: Record<string, { points: number; exists: boolean; id?: string }> = {}

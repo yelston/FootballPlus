@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import type { Database } from '@/types/database'
 
 export type UserRole = 'admin' | 'coach' | 'volunteer'
 
@@ -12,6 +13,8 @@ export interface User {
   profileImageUrl: string | null
   createdAt: string
 }
+
+type UserRow = Database['public']['Tables']['users']['Row']
 
 export async function getCurrentUser(): Promise<User | null> {
   const supabase = createClient()
@@ -27,6 +30,7 @@ export async function getCurrentUser(): Promise<User | null> {
   const { data: user, error } = await supabase
     .from('users')
     .select('*')
+    .returns<UserRow[]>()
     .eq('id', authUser.id)
     .single()
 

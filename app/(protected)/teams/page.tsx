@@ -2,6 +2,11 @@ import { getCurrentUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { TeamsList } from '@/components/teams/TeamsList'
+import type { Database } from '@/types/database'
+
+type TeamRow = Database['public']['Tables']['teams']['Row']
+type UserRow = Database['public']['Tables']['users']['Row']
+type PlayerRow = Database['public']['Tables']['players']['Row']
 
 export default async function TeamsPage() {
   const user = await getCurrentUser()
@@ -14,6 +19,7 @@ export default async function TeamsPage() {
   const { data: teams } = await supabase
     .from('teams')
     .select('*')
+    .returns<TeamRow[]>()
     .order('createdAt', { ascending: false })
   
   // Get main coaches for teams
@@ -21,12 +27,14 @@ export default async function TeamsPage() {
   const { data: coaches } = teamIds.length > 0 ? await supabase
     .from('users')
     .select('id, name, email')
-    .in('id', teamIds) : { data: [] }
+    .in('id', teamIds)
+    .returns<Pick<UserRow, 'id' | 'name' | 'email'>[]>() : { data: [] }
   
   // Get player counts
   const { data: playerCounts } = await supabase
     .from('players')
     .select('teamId')
+    .returns<Pick<PlayerRow, 'teamId'>[]>()
   
   const teamsWithData = teams?.map(team => ({
     ...team,
@@ -38,6 +46,7 @@ export default async function TeamsPage() {
     .from('users')
     .select('id, name, email, role')
     .in('role', ['coach', 'volunteer', 'admin'])
+    .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>()
     .order('name')
 
   return (

@@ -43,6 +43,9 @@ import { Plus, Search, Edit, Trash2, Filter, ChevronDown } from 'lucide-react'
 import { differenceInYears } from 'date-fns'
 import Image from 'next/image'
 import { useIsMobile } from '@/lib/hooks/use-media-query'
+import type { Database } from '@/types/database'
+
+type PlayerRow = Database['public']['Tables']['players']['Row']
 
 interface Player {
   id: string
@@ -279,6 +282,7 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
           notes: notes || null,
         })
         .select()
+        .returns<PlayerRow[]>()
         .single()
 
       if (error) {

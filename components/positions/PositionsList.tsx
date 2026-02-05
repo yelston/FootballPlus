@@ -94,6 +94,7 @@ export function PositionsList({ initialPositions, canEdit }: PositionsListProps)
         .from('positions')
         .insert({ name, sortOrder: sortOrder ?? 0 })
         .select()
+        .returns<Position[]>()
         .single()
 
       if (insertError) {

@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import type { Database } from '@/types/database'
+
+type UserRow = Database['public']['Tables']['users']['Row']
 
 export default function LoginPage() {
   const router = useRouter()
@@ -56,6 +59,7 @@ export default function LoginPage() {
     const { data: userRecord, error: userError } = await supabase
       .from('users')
       .select('id, name, email, role')
+      .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>()
       .eq('id', authData.user.id)
       .single()
 

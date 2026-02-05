@@ -18,6 +18,15 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Search, Calendar as CalendarIcon } from 'lucide-react'
 import { AttendanceDialog } from './AttendanceDialog'
+import type { Database } from '@/types/database'
+
+type AttendanceRow = Database['public']['Tables']['attendance']['Row']
+type PlayerRow = Database['public']['Tables']['players']['Row']
+type TeamRow = Database['public']['Tables']['teams']['Row']
+type AttendanceRecordRow = AttendanceRow & {
+  players: Pick<PlayerRow, 'firstName' | 'lastName'> | null
+  teams: Pick<TeamRow, 'name'> | null
+}
 
 interface Team {
   id: string
@@ -70,6 +79,7 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
         players(firstName, lastName),
         teams(name)
       `)
+      .returns<AttendanceRecordRow[]>()
       .order('date', { ascending: false })
       .limit(100)
 

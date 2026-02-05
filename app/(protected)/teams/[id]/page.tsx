@@ -18,6 +18,7 @@ import type { Database } from '@/types/database'
 
 type TeamRow = Database['public']['Tables']['teams']['Row']
 type UserRow = Database['public']['Tables']['users']['Row']
+type PlayerRow = Database['public']['Tables']['players']['Row']
 
 export default async function TeamDetailPage({
   params,
@@ -34,8 +35,9 @@ export default async function TeamDetailPage({
   const { data: teamData } = await supabase
     .from('teams')
     .select('*')
+    .returns<TeamRow[]>()
     .eq('id', params.id)
-    .single<TeamRow>()
+    .single()
   
   // Get related users
   const userIds = [
@@ -66,6 +68,7 @@ export default async function TeamDetailPage({
   const { data: players } = await supabase
     .from('players')
     .select('id, firstName, lastName, positions')
+    .returns<Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'positions'>[]>()
     .eq('teamId', params.id)
     .order('firstName')
 

@@ -15,6 +15,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import type { Database } from '@/types/database'
+
+type AttendanceRow = Database['public']['Tables']['attendance']['Row']
+type PlayerRow = Database['public']['Tables']['players']['Row']
+type TeamRow = Database['public']['Tables']['teams']['Row']
+type AnalyticsRecord = Pick<AttendanceRow, 'playerId' | 'points'> & {
+  players: Pick<PlayerRow, 'firstName' | 'lastName' | 'teamId'> | null
+  teams: Pick<TeamRow, 'name'> | null
+}
 
 interface Team {
   id: string
@@ -61,6 +70,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
         players(firstName, lastName, teamId),
         teams(name)
       `)
+      .returns<AnalyticsRecord[]>()
 
     if (dateFrom) {
       query = query.gte('date', dateFrom)
@@ -78,7 +88,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
       // Calculate player stats
       const playerMap = new Map<string, PlayerStats>()
       
-      data.forEach((record: any) => {
+      data.forEach((record) => {
         const playerId = record.playerId
         if (!playerMap.has(playerId)) {
           playerMap.set(playerId, {

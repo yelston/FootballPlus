@@ -25,8 +25,9 @@ export default async function PlayerDetailPage({
   const { data: player } = await supabase
     .from('players')
     .select('*, teams(name)')
+    .returns<PlayerWithTeam[]>()
     .eq('id', params.id)
-    .single<PlayerWithTeam>()
+    .single()
 
   if (!player) {
     notFound()

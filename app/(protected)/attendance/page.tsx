@@ -2,6 +2,10 @@ import { getCurrentUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AttendanceView } from '@/components/attendance/AttendanceView'
+import type { Database } from '@/types/database'
+
+type TeamRow = Database['public']['Tables']['teams']['Row']
+type PlayerRow = Database['public']['Tables']['players']['Row']
 
 export default async function AttendancePage() {
   const user = await getCurrentUser()
@@ -14,11 +18,13 @@ export default async function AttendancePage() {
   const { data: teams } = await supabase
     .from('teams')
     .select('id, name')
+    .returns<Pick<TeamRow, 'id' | 'name'>[]>()
     .order('name')
 
   const { data: players } = await supabase
     .from('players')
     .select('id, firstName, lastName, teamId')
+    .returns<Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'teamId'>[]>()
     .order('firstName')
 
   return (

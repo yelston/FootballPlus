@@ -2,6 +2,9 @@ import { getCurrentUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PositionsList } from '@/components/positions/PositionsList'
+import type { Database } from '@/types/database'
+
+type PositionRow = Database['public']['Tables']['positions']['Row']
 
 export default async function PositionsPage() {
   const user = await getCurrentUser()
@@ -14,6 +17,7 @@ export default async function PositionsPage() {
   const { data: positions } = await supabase
     .from('positions')
     .select('*')
+    .returns<PositionRow[]>()
     .order('sortOrder', { ascending: true })
 
   return (

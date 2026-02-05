@@ -1,6 +1,9 @@
 import { requireAdmin } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { UsersList } from '@/components/users/UsersList'
+import type { Database } from '@/types/database'
+
+type UserRow = Database['public']['Tables']['users']['Row']
 
 export default async function FPTeamPage() {
   await requireAdmin()
@@ -9,6 +12,7 @@ export default async function FPTeamPage() {
   const { data: users, error } = await supabase
     .from('users')
     .select('*')
+    .returns<UserRow[]>()
     .order('createdAt', { ascending: false })
 
   if (error) {

@@ -2,6 +2,12 @@ import { getCurrentUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PlayersList } from '@/components/players/PlayersList'
+import type { Database } from '@/types/database'
+
+type PlayerRow = Database['public']['Tables']['players']['Row']
+type TeamRow = Database['public']['Tables']['teams']['Row']
+type PositionRow = Database['public']['Tables']['positions']['Row']
+type PlayerWithTeam = PlayerRow & { teams: { name: string } | null }
 
 export default async function PlayersPage() {
   const user = await getCurrentUser()
@@ -14,16 +20,19 @@ export default async function PlayersPage() {
   const { data: players } = await supabase
     .from('players')
     .select('*, teams(name)')
+    .returns<PlayerWithTeam[]>()
     .order('createdAt', { ascending: false })
 
   const { data: teams } = await supabase
     .from('teams')
     .select('id, name')
+    .returns<Pick<TeamRow, 'id' | 'name'>[]>()
     .order('name')
 
   const { data: positions } = await supabase
     .from('positions')
     .select('id, name')
+    .returns<Pick<PositionRow, 'id' | 'name'>[]>()
     .order('sortOrder', { ascending: true })
 
   return (

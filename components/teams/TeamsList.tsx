@@ -38,6 +38,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Plus, Edit, Search, Eye } from 'lucide-react'
 import { useIsMobile } from '@/lib/hooks/use-media-query'
+import type { Database } from '@/types/database'
+
+type TeamRow = Database['public']['Tables']['teams']['Row']
 
 interface Team {
   id: string
@@ -161,6 +164,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
           notes: notes || null,
         })
         .select()
+        .returns<TeamRow[]>()
         .single()
 
       if (error) {

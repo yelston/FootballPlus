@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
 import { AttendanceDialog } from './AttendanceDialog'
+import type { Database } from '@/types/database'
+
+type AttendanceRow = Database['public']['Tables']['attendance']['Row']
 
 interface Team {
   id: string
@@ -55,6 +58,7 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
     supabase
       .from('attendance')
       .select('date, teamId')
+      .returns<Pick<AttendanceRow, 'date' | 'teamId'>[]>()
       .gte('date', rangeStart)
       .lte('date', rangeEnd)
       .then(({ data }) => {
@@ -101,6 +105,7 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
     supabase
       .from('attendance')
       .select('date, teamId')
+      .returns<Pick<AttendanceRow, 'date' | 'teamId'>[]>()
       .gte('date', rangeStart)
       .lte('date', rangeEnd)
       .then(({ data }) => {
