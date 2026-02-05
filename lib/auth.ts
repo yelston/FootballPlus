@@ -30,8 +30,8 @@ export async function getCurrentUser(): Promise<User | null> {
   const { data: user, error } = await supabase
     .from('users')
     .select('*')
-    .returns<UserRow[]>()
     .eq('id', authUser.id)
+    .returns<UserRow[]>()
     .single()
 
   if (error || !user) {

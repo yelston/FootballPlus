@@ -82,7 +82,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
       query = query.eq('teamId', teamFilter)
     }
 
-    const { data } = await query
+    const { data } = await query.returns<AnalyticsRecord[]>()
 
     if (data) {
       // Calculate player stats

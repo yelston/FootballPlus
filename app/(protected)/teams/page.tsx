@@ -19,8 +19,8 @@ export default async function TeamsPage() {
   const { data: teams } = await supabase
     .from('teams')
     .select('*')
-    .returns<TeamRow[]>()
     .order('createdAt', { ascending: false })
+    .returns<TeamRow[]>()
   
   // Get main coaches for teams
   const teamIds = teams?.map(t => t.mainCoachId).filter(Boolean) || []
@@ -46,8 +46,8 @@ export default async function TeamsPage() {
     .from('users')
     .select('id, name, email, role')
     .in('role', ['coach', 'volunteer', 'admin'])
-    .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>()
     .order('name')
+    .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>()
 
   return (
     <div className="space-y-6">

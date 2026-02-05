@@ -35,8 +35,8 @@ export default async function TeamDetailPage({
   const { data: teamData } = await supabase
     .from('teams')
     .select('*')
-    .returns<TeamRow[]>()
     .eq('id', params.id)
+    .returns<TeamRow[]>()
     .single()
   
   // Get related users
@@ -68,8 +68,8 @@ export default async function TeamDetailPage({
   const { data: players } = await supabase
     .from('players')
     .select('id, firstName, lastName, positions')
-    .returns<Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'positions'>[]>()
     .eq('teamId', params.id)
+    .returns<Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'positions'>[]>()
     .order('firstName')
 
   return (

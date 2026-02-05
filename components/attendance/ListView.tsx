@@ -79,9 +79,9 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
         players(firstName, lastName),
         teams(name)
       `)
-      .returns<AttendanceRecordRow[]>()
       .order('date', { ascending: false })
       .limit(100)
+      .returns<AttendanceRecordRow[]>()
 
     if (!error && data) {
       setAttendance(data)

@@ -58,9 +58,9 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
     supabase
       .from('attendance')
       .select('date, teamId')
-      .returns<Pick<AttendanceRow, 'date' | 'teamId'>[]>()
       .gte('date', rangeStart)
       .lte('date', rangeEnd)
+      .returns<Pick<AttendanceRow, 'date' | 'teamId'>[]>()
       .then(({ data }) => {
         if (cancelled || !data) return
         const byDate: Record<string, Record<string | 'null', number>> = {}
@@ -105,9 +105,9 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
     supabase
       .from('attendance')
       .select('date, teamId')
-      .returns<Pick<AttendanceRow, 'date' | 'teamId'>[]>()
       .gte('date', rangeStart)
       .lte('date', rangeEnd)
+      .returns<Pick<AttendanceRow, 'date' | 'teamId'>[]>()
       .then(({ data }) => {
         if (!data) return
         const byDate: Record<string, Record<string | 'null', number>> = {}

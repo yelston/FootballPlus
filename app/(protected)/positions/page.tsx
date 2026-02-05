@@ -17,8 +17,8 @@ export default async function PositionsPage() {
   const { data: positions } = await supabase
     .from('positions')
     .select('*')
-    .returns<PositionRow[]>()
     .order('sortOrder', { ascending: true })
+    .returns<PositionRow[]>()
 
   return (
     <div className="space-y-6">

@@ -103,8 +103,8 @@ export function AttendanceDialog({
     const { data } = await supabase
       .from('attendance')
       .select('id, playerId, points')
-      .returns<Pick<AttendanceRow, 'id' | 'playerId' | 'points'>[]>()
       .eq('date', dateString)
+      .returns<Pick<AttendanceRow, 'id' | 'playerId' | 'points'>[]>()
 
     const records: Record<string, { points: number; exists: boolean; id?: string }> = {}
 

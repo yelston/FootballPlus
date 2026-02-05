@@ -59,8 +59,8 @@ export default function LoginPage() {
     const { data: userRecord, error: userError } = await supabase
       .from('users')
       .select('id, name, email, role')
-      .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>()
       .eq('id', authData.user.id)
+      .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>()
       .single()
 
     if (userError) {

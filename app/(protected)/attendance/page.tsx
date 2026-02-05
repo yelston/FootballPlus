@@ -18,14 +18,14 @@ export default async function AttendancePage() {
   const { data: teams } = await supabase
     .from('teams')
     .select('id, name')
-    .returns<Pick<TeamRow, 'id' | 'name'>[]>()
     .order('name')
+    .returns<Pick<TeamRow, 'id' | 'name'>[]>()
 
   const { data: players } = await supabase
     .from('players')
     .select('id, firstName, lastName, teamId')
-    .returns<Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'teamId'>[]>()
     .order('firstName')
+    .returns<Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'teamId'>[]>()
 
   return (
     <div className="min-w-0 space-y-3 lg:space-y-6">

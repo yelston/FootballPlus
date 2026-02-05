@@ -20,20 +20,20 @@ export default async function PlayersPage() {
   const { data: players } = await supabase
     .from('players')
     .select('*, teams(name)')
-    .returns<PlayerWithTeam[]>()
     .order('createdAt', { ascending: false })
+    .returns<PlayerWithTeam[]>()
 
   const { data: teams } = await supabase
     .from('teams')
     .select('id, name')
-    .returns<Pick<TeamRow, 'id' | 'name'>[]>()
     .order('name')
+    .returns<Pick<TeamRow, 'id' | 'name'>[]>()
 
   const { data: positions } = await supabase
     .from('positions')
     .select('id, name')
-    .returns<Pick<PositionRow, 'id' | 'name'>[]>()
     .order('sortOrder', { ascending: true })
+    .returns<Pick<PositionRow, 'id' | 'name'>[]>()
 
   return (
     <div className="space-y-6">

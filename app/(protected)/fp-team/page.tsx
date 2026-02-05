@@ -12,8 +12,8 @@ export default async function FPTeamPage() {
   const { data: users, error } = await supabase
     .from('users')
     .select('*')
-    .returns<UserRow[]>()
     .order('createdAt', { ascending: false })
+    .returns<UserRow[]>()
 
   if (error) {
     console.error('Error fetching users:', error)
