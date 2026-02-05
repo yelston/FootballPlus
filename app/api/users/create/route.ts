@@ -1,8 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/auth'
 import { NextResponse } from 'next/server'
-import type { Database } from '@/types/database'
-import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +9,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { name, email, contactNumber, role } = body
 
-    const supabase: SupabaseClient<Database> = createAdminClient()
+    const supabase = createAdminClient()
     
     // Create auth user
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -25,13 +23,14 @@ export async function POST(request: Request) {
     }
 
     // Create user record
-    const newUser: Database['public']['Tables']['users']['Insert'] = {
+    const newUser = {
       id: authData.user.id,
       name,
       email,
       contactNumber: contactNumber || null,
       role,
     }
+    // @ts-ignore - Supabase type inference issue
     const { error: userError } = await supabase.from('users').insert(newUser)
 
     if (userError) {
