@@ -5,6 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { differenceInYears } from 'date-fns'
 import Image from 'next/image'
+import type { Database } from '@/types/database'
+
+type PlayerRow = Database['public']['Tables']['players']['Row']
+type PlayerWithTeam = PlayerRow & { teams: { name: string } | null }
 
 export default async function PlayerDetailPage({
   params,
@@ -22,7 +26,7 @@ export default async function PlayerDetailPage({
     .from('players')
     .select('*, teams(name)')
     .eq('id', params.id)
-    .single()
+    .single<PlayerWithTeam>()
 
   if (!player) {
     notFound()
