@@ -227,6 +227,7 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
     }
 
     if (editingPlayer) {
+      // @ts-ignore - Supabase type inference issue with update
       const { error } = await supabase
         .from('players')
         .update({

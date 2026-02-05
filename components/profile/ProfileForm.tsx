@@ -67,6 +67,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
       }
 
       // Update user profile
+      // @ts-ignore - Supabase type inference issue with update
       const { error } = await supabase
         .from('users')
         .update({

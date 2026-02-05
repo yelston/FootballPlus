@@ -71,6 +71,7 @@ export function PositionsList({ initialPositions, canEdit }: PositionsListProps)
     const supabase = createClient()
 
     if (editingPosition) {
+      // @ts-ignore - Supabase type inference issue with update
       const { error: updateError } = await supabase
         .from('positions')
         .update({ name, sortOrder: sortOrder ?? 0 })

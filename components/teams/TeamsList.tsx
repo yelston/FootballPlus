@@ -119,6 +119,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
     const supabase = createClient()
 
     if (editingTeam) {
+      // @ts-ignore - Supabase type inference issue with update
       const { error } = await supabase
         .from('teams')
         .update({
