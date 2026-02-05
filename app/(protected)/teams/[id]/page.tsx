@@ -14,6 +14,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ChevronLeft } from 'lucide-react'
+import type { Database } from '@/types/database'
+
+type TeamRow = Database['public']['Tables']['teams']['Row']
+type UserRow = Database['public']['Tables']['users']['Row']
 
 export default async function TeamDetailPage({
   params,
@@ -31,7 +35,7 @@ export default async function TeamDetailPage({
     .from('teams')
     .select('*')
     .eq('id', params.id)
-    .single()
+    .single<TeamRow>()
   
   // Get related users
   const userIds = [
@@ -40,10 +44,13 @@ export default async function TeamDetailPage({
     ...(teamData?.volunteerIds || [])
   ].filter(Boolean) as string[]
   
-  const { data: relatedUsers } = userIds.length > 0 ? await supabase
-    .from('users')
-    .select('id, name, email, role')
-    .in('id', userIds) : { data: [] }
+  const { data: relatedUsers } = userIds.length > 0
+    ? await supabase
+        .from('users')
+        .select('id, name, email, role')
+        .in('id', userIds)
+        .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>()
+    : { data: [] }
   
   const team = teamData ? {
     ...teamData,
