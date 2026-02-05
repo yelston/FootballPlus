@@ -272,6 +272,7 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
     } else {
       const { data, error } = await supabase
         .from('players')
+        // @ts-ignore - Supabase type inference issue with insert
         .insert({
           firstName,
           lastName,

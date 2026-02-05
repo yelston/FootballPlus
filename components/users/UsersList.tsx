@@ -78,9 +78,9 @@ export function UsersList({ initialUsers }: UsersListProps) {
 
     if (editingUser) {
       // Update existing user
-      // @ts-ignore - Supabase type inference issue with update
       const { error } = await supabase
         .from('users')
+        // @ts-ignore - Supabase type inference issue with update
         .update({
           name,
           email,

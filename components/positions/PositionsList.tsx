@@ -71,9 +71,9 @@ export function PositionsList({ initialPositions, canEdit }: PositionsListProps)
     const supabase = createClient()
 
     if (editingPosition) {
-      // @ts-ignore - Supabase type inference issue with update
       const { error: updateError } = await supabase
         .from('positions')
+        // @ts-ignore - Supabase type inference issue with update
         .update({ name, sortOrder: sortOrder ?? 0 })
         .eq('id', editingPosition.id)
 
@@ -93,6 +93,7 @@ export function PositionsList({ initialPositions, canEdit }: PositionsListProps)
     } else {
       const { data, error: insertError } = await supabase
         .from('positions')
+        // @ts-ignore - Supabase type inference issue with insert
         .insert({ name, sortOrder: sortOrder ?? 0 })
         .select()
         .single() as { data: Position | null, error: any }
