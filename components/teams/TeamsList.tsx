@@ -164,7 +164,6 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
           notes: notes || null,
         })
         .select()
-        .returns<TeamRow[]>()
         .single()
 
       if (error) {

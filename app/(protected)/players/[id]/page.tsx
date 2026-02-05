@@ -26,7 +26,6 @@ export default async function PlayerDetailPage({
     .from('players')
     .select('*, teams(name)')
     .eq('id', params.id)
-    .returns<PlayerWithTeam[]>()
     .single()
 
   if (!player) {

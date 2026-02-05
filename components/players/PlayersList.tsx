@@ -282,7 +282,6 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
           notes: notes || null,
         })
         .select()
-        .returns<PlayerRow[]>()
         .single()
 
       if (error) {

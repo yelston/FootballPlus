@@ -31,7 +31,6 @@ export async function getCurrentUser(): Promise<User | null> {
     .from('users')
     .select('*')
     .eq('id', authUser.id)
-    .returns<UserRow[]>()
     .single()
 
   if (error || !user) {

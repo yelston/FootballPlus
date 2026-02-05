@@ -60,7 +60,6 @@ export default function LoginPage() {
       .from('users')
       .select('id, name, email, role')
       .eq('id', authData.user.id)
-      .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>()
       .single()
 
     if (userError) {

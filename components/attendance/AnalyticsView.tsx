@@ -70,7 +70,6 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
         players(firstName, lastName, teamId),
         teams(name)
       `)
-      .returns<AnalyticsRecord[]>()
 
     if (dateFrom) {
       query = query.gte('date', dateFrom)
@@ -82,7 +81,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
       query = query.eq('teamId', teamFilter)
     }
 
-    const { data } = await query.returns<AnalyticsRecord[]>()
+    const { data } = await query
 
     if (data) {
       // Calculate player stats

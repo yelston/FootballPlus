@@ -36,7 +36,6 @@ export default async function TeamDetailPage({
     .from('teams')
     .select('*')
     .eq('id', params.id)
-    .returns<TeamRow[]>()
     .single()
   
   // Get related users
@@ -51,7 +50,6 @@ export default async function TeamDetailPage({
         .from('users')
         .select('id, name, email, role')
         .in('id', userIds)
-        .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>()
     : { data: [] }
   
   const team = teamData ? {
@@ -69,7 +67,6 @@ export default async function TeamDetailPage({
     .from('players')
     .select('id, firstName, lastName, positions')
     .eq('teamId', params.id)
-    .returns<Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'positions'>[]>()
     .order('firstName')
 
   return (
