@@ -36,7 +36,7 @@ export default async function TeamDetailPage({
     .from('teams')
     .select('*')
     .eq('id', params.id)
-    .single()
+    .single() as { data: TeamRow | null }
   
   // Get related users
   const userIds = [
@@ -49,7 +49,7 @@ export default async function TeamDetailPage({
     ? await supabase
         .from('users')
         .select('id, name, email, role')
-        .in('id', userIds)
+        .in('id', userIds) as { data: Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[] | null }
     : { data: [] }
   
   const team = teamData ? {
@@ -67,7 +67,7 @@ export default async function TeamDetailPage({
     .from('players')
     .select('id, firstName, lastName, positions')
     .eq('teamId', params.id)
-    .order('firstName')
+    .order('firstName') as { data: Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'positions'>[] | null }
 
   return (
     <div className="space-y-6">

@@ -94,14 +94,14 @@ export function PositionsList({ initialPositions, canEdit }: PositionsListProps)
         .from('positions')
         .insert({ name, sortOrder: sortOrder ?? 0 })
         .select()
-        .single()
+        .single() as { data: Position | null, error: any }
 
       if (insertError) {
         setError(insertError.message)
         setLoading(false)
         return
       }
-      setPositions([data, ...positions])
+      setPositions([data!, ...positions])
       setIsDialogOpen(false)
       router.refresh()
     }

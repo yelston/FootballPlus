@@ -164,13 +164,13 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
           notes: notes || null,
         })
         .select()
-        .single()
+        .single() as { data: TeamRow | null, error: any }
 
       if (error) {
         setError(error.message)
         setLoading(false)
       } else {
-        setTeams([data, ...teams])
+        setTeams([data!, ...teams])
         setIsDialogOpen(false)
         setLoading(false)
         router.refresh()

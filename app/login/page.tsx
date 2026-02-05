@@ -60,7 +60,7 @@ export default function LoginPage() {
       .from('users')
       .select('id, name, email, role')
       .eq('id', authData.user.id)
-      .single()
+      .single() as { data: Pick<UserRow, 'id' | 'name' | 'email' | 'role'> | null, error: any }
 
     if (userError) {
       // User exists in auth but not in users table or RLS blocking access

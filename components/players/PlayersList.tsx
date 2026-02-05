@@ -282,13 +282,13 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
           notes: notes || null,
         })
         .select()
-        .single()
+        .single() as { data: PlayerRow | null, error: any }
 
       if (error) {
         setError(error.message)
         setLoading(false)
       } else {
-        setPlayers([data, ...players])
+        setPlayers([data!, ...players])
         setIsDialogOpen(false)
         setDobDate(undefined)
         setLoading(false)

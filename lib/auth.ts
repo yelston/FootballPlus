@@ -31,7 +31,7 @@ export async function getCurrentUser(): Promise<User | null> {
     .from('users')
     .select('*')
     .eq('id', authUser.id)
-    .single()
+    .single() as { data: UserRow | null, error: any }
 
   if (error || !user) {
     return null
