@@ -64,14 +64,14 @@ export default async function TeamDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <Button variant="ghost" size="sm" className="-ml-2" asChild>
           <Link href="/teams" className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
             <ChevronLeft className="h-4 w-4" />
             Back to Teams
           </Link>
         </Button>
-        <div className="text-right">
+        <div className="text-left sm:text-right">
           <h1 className="text-3xl font-bold">{team.name}</h1>
           <p className="text-muted-foreground">Team Details</p>
         </div>
@@ -138,43 +138,68 @@ export default async function TeamDetailPage({
           </CardHeader>
           <CardContent>
             {players && players.length > 0 ? (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Positions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {players.map((player) => (
-                      <TableRow key={player.id}>
-                        <TableCell className="font-medium">
-                          <Link
-                            href={`/players/${player.id}`}
-                            className="hover:underline"
-                          >
-                            {player.firstName} {player.lastName}
-                          </Link>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {player.positions && player.positions.length > 0 ? (
-                              player.positions.slice(0, 2).map((position) => (
-                                <Badge key={position} variant="secondary" className="text-xs">
-                                  {position}
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-muted-foreground text-sm">-</span>
-                            )}
-                          </div>
-                        </TableCell>
+              <>
+                <div className="space-y-3 md:hidden">
+                  {players.map((player) => (
+                    <div key={player.id} className="rounded-md border p-3">
+                      <Link
+                        href={`/players/${player.id}`}
+                        className="font-semibold hover:underline"
+                      >
+                        {player.firstName} {player.lastName}
+                      </Link>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {player.positions && player.positions.length > 0 ? (
+                          player.positions.slice(0, 2).map((position) => (
+                            <Badge key={position} variant="secondary" className="text-xs">
+                              {position}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden md:block rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Positions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {players.map((player) => (
+                        <TableRow key={player.id}>
+                          <TableCell className="font-medium">
+                            <Link
+                              href={`/players/${player.id}`}
+                              className="hover:underline"
+                            >
+                              {player.firstName} {player.lastName}
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {player.positions && player.positions.length > 0 ? (
+                                player.positions.slice(0, 2).map((position) => (
+                                  <Badge key={position} variant="secondary" className="text-xs">
+                                    {position}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             ) : (
               <p className="text-muted-foreground">No players assigned to this team.</p>
             )}

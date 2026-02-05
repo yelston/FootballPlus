@@ -22,9 +22,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
 import { Plus, Edit } from 'lucide-react'
 import type { Database } from '@/types/database'
+import { useIsMobile } from '@/lib/hooks/use-media-query'
 
 type Position = Database['public']['Tables']['positions']['Row']
 
@@ -35,6 +45,7 @@ interface PositionsListProps {
 
 export function PositionsList({ initialPositions, canEdit }: PositionsListProps) {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [positions, setPositions] = useState<Position[]>(initialPositions)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingPosition, setEditingPosition] = useState<Position | null>(null)
@@ -113,85 +124,114 @@ export function PositionsList({ initialPositions, canEdit }: PositionsListProps)
     setError(null)
   }
 
+  const FormHeaderComponent = isMobile ? SheetHeader : DialogHeader
+  const FormTitleComponent = isMobile ? SheetTitle : DialogTitle
+  const FormDescriptionComponent = isMobile ? SheetDescription : DialogDescription
+  const FormFooterComponent = isMobile ? SheetFooter : DialogFooter
+
+  const positionForm = (
+    <form key={editingPosition?.id ?? 'new'} onSubmit={handleSubmit}>
+      <FormHeaderComponent>
+        <FormTitleComponent>
+          {editingPosition ? 'Edit Position' : 'Add New Position'}
+        </FormTitleComponent>
+        <FormDescriptionComponent>
+          {editingPosition
+            ? 'Update the position name and order.'
+            : 'Add a new position option for player profiles.'}
+        </FormDescriptionComponent>
+      </FormHeaderComponent>
+      <div className="grid gap-4 py-4">
+        {error && (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+        <div className="grid gap-2">
+          <Label htmlFor="name">Name *</Label>
+          <Input
+            id="name"
+            name="name"
+            defaultValue={editingPosition?.name ?? ''}
+            required
+            disabled={loading}
+            placeholder="e.g. Goalkeeper"
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="sortOrder">Sort order</Label>
+          <Input
+            id="sortOrder"
+            name="sortOrder"
+            type="number"
+            min={0}
+            defaultValue={editingPosition?.sortOrder ?? ''}
+            disabled={loading}
+            placeholder="0"
+          />
+        </div>
+      </div>
+      <FormFooterComponent>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={closeDialog}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={loading}>
+          {loading
+            ? 'Saving...'
+            : editingPosition
+              ? 'Update'
+              : 'Create'}
+        </Button>
+      </FormFooterComponent>
+    </form>
+  )
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
         {canEdit && (
-          <Dialog
-            open={isDialogOpen}
-            onOpenChange={(open) => {
-              if (!open) closeDialog()
-              setIsDialogOpen(open)
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button onClick={openCreateDialog} className="w-full sm:w-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Position
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[400px]">
-              <form key={editingPosition?.id ?? 'new'} onSubmit={handleSubmit}>
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingPosition ? 'Edit Position' : 'Add New Position'}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {editingPosition
-                      ? 'Update the position name and order.'
-                      : 'Add a new position option for player profiles.'}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  {error && (
-                    <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                      {error}
-                    </div>
-                  )}
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Name *</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      defaultValue={editingPosition?.name ?? ''}
-                      required
-                      disabled={loading}
-                      placeholder="e.g. Goalkeeper"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="sortOrder">Sort order</Label>
-                    <Input
-                      id="sortOrder"
-                      name="sortOrder"
-                      type="number"
-                      min={0}
-                      defaultValue={editingPosition?.sortOrder ?? ''}
-                      disabled={loading}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={closeDialog}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading
-                      ? 'Saving...'
-                      : editingPosition
-                        ? 'Update'
-                        : 'Create'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          isMobile ? (
+            <Sheet
+              open={isDialogOpen}
+              onOpenChange={(open) => {
+                if (!open) closeDialog()
+                setIsDialogOpen(open)
+              }}
+            >
+              <SheetTrigger asChild>
+                <Button onClick={openCreateDialog} className="w-full sm:w-auto">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Position
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[100svh] w-screen overflow-y-auto">
+                {positionForm}
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <Dialog
+              open={isDialogOpen}
+              onOpenChange={(open) => {
+                if (!open) closeDialog()
+                setIsDialogOpen(open)
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button onClick={openCreateDialog} className="w-full sm:w-auto">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Position
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[400px]">
+                {positionForm}
+              </DialogContent>
+            </Dialog>
+          )
         )}
       </div>
 
@@ -200,38 +240,66 @@ export function PositionsList({ initialPositions, canEdit }: PositionsListProps)
           <p className="text-muted-foreground">No positions yet.</p>
         </div>
       ) : (
-        <div className="rounded-md border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="w-24">Order</TableHead>
-                {canEdit && <TableHead className="text-right w-24">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {positions.map((position) => (
-                <TableRow key={position.id}>
-                  <TableCell className="font-medium">{position.name}</TableCell>
-                  <TableCell>{position.sortOrder ?? 0}</TableCell>
+        <>
+          <div className="space-y-3 md:hidden">
+            {positions.map((position) => (
+              <div key={position.id} className="rounded-md border p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{position.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Order: {position.sortOrder ?? 0}
+                    </p>
+                  </div>
                   {canEdit && (
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditDialog(position)}
-                        disabled={loading}
-                        aria-label="Edit position"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10"
+                      onClick={() => openEditDialog(position)}
+                      disabled={loading}
+                      aria-label="Edit position"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
                   )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:block rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="w-24">Order</TableHead>
+                  {canEdit && <TableHead className="text-right w-24">Actions</TableHead>}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {positions.map((position) => (
+                  <TableRow key={position.id}>
+                    <TableCell className="font-medium">{position.name}</TableCell>
+                    <TableCell>{position.sortOrder ?? 0}</TableCell>
+                    {canEdit && (
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(position)}
+                          disabled={loading}
+                          aria-label="Edit position"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </div>
   )

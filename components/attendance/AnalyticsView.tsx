@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -49,11 +49,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
   const [dateTo, setDateTo] = useState('')
   const [teamFilter, setTeamFilter] = useState<string>('all')
 
-  useEffect(() => {
-    loadAnalytics()
-  }, [dateFrom, dateTo, teamFilter])
-
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
 
@@ -141,7 +137,11 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
     }
 
     setLoading(false)
-  }
+  }, [dateFrom, dateTo, teamFilter])
+
+  useEffect(() => {
+    loadAnalytics()
+  }, [loadAnalytics])
 
   return (
     <div className="space-y-6">
@@ -205,40 +205,58 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
                 No data available
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Player</TableHead>
-                      <TableHead>Team</TableHead>
-                      <TableHead className="text-right">Points</TableHead>
-                      <TableHead className="text-right">Sessions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {playerStats.map((stat) => (
-                      <TableRow key={stat.playerId}>
-                        <TableCell className="font-medium">
-                          {stat.firstName} {stat.lastName}
-                        </TableCell>
-                        <TableCell>
-                          {stat.teamName ? (
-                            <Badge variant="secondary">{stat.teamName}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">No team</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {stat.totalPoints}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {stat.attendanceCount}
-                        </TableCell>
+              <>
+                <div className="space-y-2 md:hidden">
+                  {playerStats.map((stat) => (
+                    <div key={stat.playerId} className="rounded-md border p-3">
+                      <p className="font-semibold">
+                        {stat.firstName} {stat.lastName}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {stat.teamName || 'No team'}
+                      </p>
+                      <div className="mt-1 flex items-center gap-4 text-sm">
+                        <span>Points: <span className="font-medium">{stat.totalPoints}</span></span>
+                        <span>Sessions: <span className="font-medium">{stat.attendanceCount}</span></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden md:block rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Player</TableHead>
+                        <TableHead>Team</TableHead>
+                        <TableHead className="text-right">Points</TableHead>
+                        <TableHead className="text-right">Sessions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {playerStats.map((stat) => (
+                        <TableRow key={stat.playerId}>
+                          <TableCell className="font-medium">
+                            {stat.firstName} {stat.lastName}
+                          </TableCell>
+                          <TableCell>
+                            {stat.teamName ? (
+                              <Badge variant="secondary">{stat.teamName}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">No team</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {stat.totalPoints}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {stat.attendanceCount}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -258,32 +276,45 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
                 No data available
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Team</TableHead>
-                      <TableHead className="text-right">Players</TableHead>
-                      <TableHead className="text-right">Total Points</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {teamStats.map((stat) => (
-                      <TableRow key={stat.teamId}>
-                        <TableCell className="font-medium">
-                          {stat.teamName}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {stat.playerCount}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {stat.totalPoints}
-                        </TableCell>
+              <>
+                <div className="space-y-2 md:hidden">
+                  {teamStats.map((stat) => (
+                    <div key={stat.teamId} className="rounded-md border p-3">
+                      <p className="font-semibold">{stat.teamName}</p>
+                      <div className="mt-1 flex items-center gap-4 text-sm">
+                        <span>Players: <span className="font-medium">{stat.playerCount}</span></span>
+                        <span>Points: <span className="font-medium">{stat.totalPoints}</span></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden md:block rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Team</TableHead>
+                        <TableHead className="text-right">Players</TableHead>
+                        <TableHead className="text-right">Total Points</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {teamStats.map((stat) => (
+                        <TableRow key={stat.teamId}>
+                          <TableCell className="font-medium">
+                            {stat.teamName}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {stat.playerCount}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {stat.totalPoints}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

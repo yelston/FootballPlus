@@ -177,7 +177,22 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="rounded-md border">
+                  <div className="space-y-2 md:hidden">
+                    {dayRecords.map((record) => (
+                      <div key={record.id} className="rounded-md border p-3">
+                        <p className="font-semibold">
+                          {record.players?.firstName} {record.players?.lastName}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {record.teams?.name || 'No team'}
+                        </p>
+                        <p className="text-sm">
+                          Points: <span className="font-medium">{record.points}</span>
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden md:block rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>

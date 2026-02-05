@@ -25,6 +25,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -33,6 +42,7 @@ import { DateOfBirthPicker } from '@/components/ui/date-picker'
 import { Plus, Search, Edit, Trash2, Filter, ChevronDown } from 'lucide-react'
 import { differenceInYears } from 'date-fns'
 import Image from 'next/image'
+import { useIsMobile } from '@/lib/hooks/use-media-query'
 
 interface Player {
   id: string
@@ -68,6 +78,7 @@ interface PlayersListProps {
 export function PlayersList({ initialPlayers, teams, positions, canEdit }: PlayersListProps) {
   const positionNames = positions.map((p) => p.name)
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [players, setPlayers] = useState<Player[]>(initialPlayers)
   const [searchQuery, setSearchQuery] = useState('')
   const [teamFilter, setTeamFilter] = useState<string[]>([])
@@ -339,6 +350,269 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
     return profileImagePreview || editingPlayer?.profileImageUrl || null
   }
 
+  const FormHeaderComponent = isMobile ? SheetHeader : DialogHeader
+  const FormTitleComponent = isMobile ? SheetTitle : DialogTitle
+  const FormDescriptionComponent = isMobile ? SheetDescription : DialogDescription
+  const FormFooterComponent = isMobile ? SheetFooter : DialogFooter
+
+  const playerForm = (
+    <form id="player-form" onSubmit={handleSubmit}>
+      <FormHeaderComponent>
+        <FormTitleComponent>
+          {editingPlayer ? 'Edit Player' : 'Add New Player'}
+        </FormTitleComponent>
+        <FormDescriptionComponent>
+          {editingPlayer
+            ? 'Update player information below.'
+            : 'Create a new player profile.'}
+        </FormDescriptionComponent>
+      </FormHeaderComponent>
+      <div className="grid gap-4 py-4">
+        {error && (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+        {/* Profile Photo Section - Top (optional) */}
+        <div className="flex flex-col items-center gap-4 pb-4 border-b">
+          <div className="relative group rounded-full">
+            <button
+              type="button"
+              onClick={handleProfileImageClick}
+              disabled={loading}
+              className="relative h-24 w-24 rounded-full border-2 border-border overflow-hidden cursor-pointer hover:opacity-80 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {getProfileImageUrl() ? (
+                <Image
+                  src={getProfileImageUrl()!}
+                  alt={editingPlayer ? `${editingPlayer.firstName} ${editingPlayer.lastName}` : 'Player'}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="h-full w-full bg-muted flex items-center justify-center">
+                  <span className="text-muted-foreground text-xs">Click to add photo</span>
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <span className="text-white text-xs opacity-0 group-hover:opacity-100 font-medium">
+                  Change Photo
+                </span>
+              </div>
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            id="profileImage"
+            name="profileImage"
+            type="file"
+            accept="image/*"
+            disabled={loading}
+            onChange={handleProfileImageChange}
+            className="hidden"
+          />
+        </div>
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="firstName">First Name <span className="text-destructive">*</span></Label>
+            <Input
+              id="firstName"
+              name="firstName"
+              defaultValue={editingPlayer?.firstName}
+              required
+              disabled={loading}
+              aria-invalid={!!fieldErrors.firstName}
+              className={cn(fieldErrors.firstName && "border-destructive")}
+            />
+            {fieldErrors.firstName && (
+              <p className="text-sm text-destructive">{fieldErrors.firstName}</p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="lastName">Last Name <span className="text-destructive">*</span></Label>
+            <Input
+              id="lastName"
+              name="lastName"
+              defaultValue={editingPlayer?.lastName}
+              required
+              disabled={loading}
+              aria-invalid={!!fieldErrors.lastName}
+              className={cn(fieldErrors.lastName && "border-destructive")}
+            />
+            {fieldErrors.lastName && (
+              <p className="text-sm text-destructive">{fieldErrors.lastName}</p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="dob">Date of Birth <span className="text-destructive">*</span></Label>
+            <div className={cn(fieldErrors.dob && "rounded-md ring-2 ring-destructive ring-offset-2 w-fit")}>
+              <DateOfBirthPicker
+                date={dobDate}
+                onSelect={setDobDate}
+                disabled={loading}
+              />
+            </div>
+            <input
+              type="hidden"
+              name="dob"
+              value={dobDate ? dobDate.toISOString().split('T')[0] : ''}
+              required
+            />
+            {fieldErrors.dob && (
+              <p className="text-sm text-destructive">{fieldErrors.dob}</p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="contactNumber">Contact Number <span className="text-destructive">*</span></Label>
+            <Input
+              id="contactNumber"
+              name="contactNumber"
+              type="tel"
+              inputMode="numeric"
+              placeholder="e.g., +1234567890"
+              value={contactNumber}
+              onChange={handleContactNumberChange}
+              required
+              disabled={loading}
+              aria-invalid={!!fieldErrors.contactNumber}
+              className={cn(fieldErrors.contactNumber && "border-destructive")}
+            />
+            {fieldErrors.contactNumber && (
+              <p className="text-sm text-destructive">{fieldErrors.contactNumber}</p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="teamId">Team <span className="text-destructive">*</span></Label>
+            <Select
+              id="teamId"
+              name="teamId"
+              value={selectedTeamId}
+              onChange={(e) => setSelectedTeamId(e.target.value)}
+              disabled={loading}
+              className={cn(fieldErrors.teamId && "border-destructive")}
+            >
+              <option value="">Select a team...</option>
+              <option value="_no_team_">No team</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </Select>
+            {fieldErrors.teamId && (
+              <p className="text-sm text-destructive">{fieldErrors.teamId}</p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label>Positions <span className="text-destructive">*</span></Label>
+            <div className={cn(
+              "relative",
+              fieldErrors.positions && "rounded-md ring-2 ring-destructive ring-offset-2"
+            )}>
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                className="w-full justify-between"
+                disabled={loading || positionNames.length === 0}
+                onClick={() => setPositionsPopoverOpen(!positionsPopoverOpen)}
+              >
+                {positionNames.length === 0
+                  ? 'No positions defined'
+                  : selectedPositions.length > 0
+                    ? `${selectedPositions.length} position${selectedPositions.length > 1 ? 's' : ''} selected`
+                    : 'Select positions...'}
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+              {positionsPopoverOpen && positionNames.length > 0 && (
+                <div className="mt-2 rounded-md border bg-popover shadow-md">
+                  <div className="max-h-60 overflow-y-auto overscroll-contain p-2">
+                    <div className="space-y-1">
+                      {positionNames.map((position) => (
+                        <label
+                          key={position}
+                          className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-accent select-none"
+                        >
+                          <Checkbox
+                            checked={selectedPositions.includes(position)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedPositions([...selectedPositions, position])
+                              } else {
+                                setSelectedPositions(selectedPositions.filter(p => p !== position))
+                              }
+                            }}
+                            disabled={loading}
+                          />
+                          <span className="text-sm">{position}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex justify-end border-t p-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setPositionsPopoverOpen(false)}
+                    >
+                      Done
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {positionNames.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Add positions from the <Link href="/positions" className="underline">Positions</Link> page.
+              </p>
+            )}
+            {selectedPositions.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {selectedPositions.map((position) => (
+                  <Badge key={position} variant="secondary" className="text-xs">
+                    {position}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {fieldErrors.positions && (
+              <p className="text-sm text-destructive mt-1">{fieldErrors.positions}</p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              placeholder="Add any additional notes about the player..."
+              defaultValue={editingPlayer?.notes || ''}
+              disabled={loading}
+              rows={4}
+            />
+          </div>
+        </div>
+      </div>
+      <FormFooterComponent>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={closeDialog}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={loading}>
+          {loading
+            ? 'Saving...'
+            : editingPlayer
+            ? 'Update Player'
+            : 'Create Player'}
+        </Button>
+      </FormFooterComponent>
+    </form>
+  )
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4">
@@ -462,287 +736,63 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
             </Dialog>
           </div>
           {canEdit && (
-            <Dialog
-              open={isDialogOpen}
-              onOpenChange={(open) => {
-                setIsDialogOpen(open)
-                if (!open) {
-                  setEditingPlayer(null)
-                  setSelectedPositions([])
-                  setSelectedTeamId('')
-                  setContactNumber('')
-                  setPositionsPopoverOpen(false)
-                  setProfileImagePreview(null)
-                  setDobDate(undefined)
-                  setError(null)
-                  setFieldErrors({})
-                }
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button onClick={openCreateDialog}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Player
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                <form id="player-form" onSubmit={handleSubmit}>
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingPlayer ? 'Edit Player' : 'Add New Player'}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingPlayer
-                        ? 'Update player information below.'
-                        : 'Create a new player profile.'}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    {error && (
-                      <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                        {error}
-                      </div>
-                    )}
-                    {/* Profile Photo Section - Top (optional) */}
-                    <div className="flex flex-col items-center gap-4 pb-4 border-b">
-                      <div className="relative group rounded-full">
-                        <button
-                          type="button"
-                          onClick={handleProfileImageClick}
-                          disabled={loading}
-                          className="relative h-24 w-24 rounded-full border-2 border-border overflow-hidden cursor-pointer hover:opacity-80 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {getProfileImageUrl() ? (
-                            <Image
-                              src={getProfileImageUrl()!}
-                              alt={editingPlayer ? `${editingPlayer.firstName} ${editingPlayer.lastName}` : 'Player'}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="h-full w-full bg-muted flex items-center justify-center">
-                              <span className="text-muted-foreground text-xs">Click to add photo</span>
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                            <span className="text-white text-xs opacity-0 group-hover:opacity-100 font-medium">
-                              Change Photo
-                            </span>
-                          </div>
-                        </button>
-                      </div>
-                      <input
-                        ref={fileInputRef}
-                        id="profileImage"
-                        name="profileImage"
-                        type="file"
-                        accept="image/*"
-                        disabled={loading}
-                        onChange={handleProfileImageChange}
-                        className="hidden"
-                      />
-                    </div>
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="firstName">First Name <span className="text-destructive">*</span></Label>
-                        <Input
-                          id="firstName"
-                          name="firstName"
-                          defaultValue={editingPlayer?.firstName}
-                          required
-                          disabled={loading}
-                          aria-invalid={!!fieldErrors.firstName}
-                          className={cn(fieldErrors.firstName && "border-destructive")}
-                        />
-                        {fieldErrors.firstName && (
-                          <p className="text-sm text-destructive">{fieldErrors.firstName}</p>
-                        )}
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="lastName">Last Name <span className="text-destructive">*</span></Label>
-                        <Input
-                          id="lastName"
-                          name="lastName"
-                          defaultValue={editingPlayer?.lastName}
-                          required
-                          disabled={loading}
-                          aria-invalid={!!fieldErrors.lastName}
-                          className={cn(fieldErrors.lastName && "border-destructive")}
-                        />
-                        {fieldErrors.lastName && (
-                          <p className="text-sm text-destructive">{fieldErrors.lastName}</p>
-                        )}
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="dob">Date of Birth <span className="text-destructive">*</span></Label>
-                        <div className={cn(fieldErrors.dob && "rounded-md ring-2 ring-destructive ring-offset-2 w-fit")}>
-                          <DateOfBirthPicker
-                            date={dobDate}
-                            onSelect={setDobDate}
-                            disabled={loading}
-                          />
-                        </div>
-                        <input
-                          type="hidden"
-                          name="dob"
-                          value={dobDate ? dobDate.toISOString().split('T')[0] : ''}
-                          required
-                        />
-                        {fieldErrors.dob && (
-                          <p className="text-sm text-destructive">{fieldErrors.dob}</p>
-                        )}
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="contactNumber">Contact Number <span className="text-destructive">*</span></Label>
-                        <Input
-                          id="contactNumber"
-                          name="contactNumber"
-                          type="tel"
-                          inputMode="numeric"
-                          placeholder="e.g., +1234567890"
-                          value={contactNumber}
-                          onChange={handleContactNumberChange}
-                          required
-                          disabled={loading}
-                          aria-invalid={!!fieldErrors.contactNumber}
-                          className={cn(fieldErrors.contactNumber && "border-destructive")}
-                        />
-                        {fieldErrors.contactNumber && (
-                          <p className="text-sm text-destructive">{fieldErrors.contactNumber}</p>
-                        )}
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="teamId">Team <span className="text-destructive">*</span></Label>
-                        <Select
-                          id="teamId"
-                          name="teamId"
-                          value={selectedTeamId}
-                          onChange={(e) => setSelectedTeamId(e.target.value)}
-                          disabled={loading}
-                          className={cn(fieldErrors.teamId && "border-destructive")}
-                        >
-                          <option value="">Select a team...</option>
-                          <option value="_no_team_">No team</option>
-                          {teams.map((team) => (
-                            <option key={team.id} value={team.id}>
-                              {team.name}
-                            </option>
-                          ))}
-                        </Select>
-                        {fieldErrors.teamId && (
-                          <p className="text-sm text-destructive">{fieldErrors.teamId}</p>
-                        )}
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Positions <span className="text-destructive">*</span></Label>
-                        <div className={cn(
-                          "relative",
-                          fieldErrors.positions && "rounded-md ring-2 ring-destructive ring-offset-2"
-                        )}>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            role="combobox"
-                            className="w-full justify-between"
-                            disabled={loading || positionNames.length === 0}
-                            onClick={() => setPositionsPopoverOpen(!positionsPopoverOpen)}
-                          >
-                            {positionNames.length === 0
-                              ? 'No positions defined'
-                              : selectedPositions.length > 0
-                                ? `${selectedPositions.length} position${selectedPositions.length > 1 ? 's' : ''} selected`
-                                : 'Select positions...'}
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                          {positionsPopoverOpen && positionNames.length > 0 && (
-                            <div className="mt-2 rounded-md border bg-popover shadow-md">
-                              <div className="max-h-60 overflow-y-auto overscroll-contain p-2">
-                                <div className="space-y-1">
-                                  {positionNames.map((position) => (
-                                    <label
-                                      key={position}
-                                      className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-accent select-none"
-                                    >
-                                      <Checkbox
-                                        checked={selectedPositions.includes(position)}
-                                        onCheckedChange={(checked) => {
-                                          if (checked) {
-                                            setSelectedPositions([...selectedPositions, position])
-                                          } else {
-                                            setSelectedPositions(selectedPositions.filter(p => p !== position))
-                                          }
-                                        }}
-                                        disabled={loading}
-                                      />
-                                      <span className="text-sm">{position}</span>
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                              <div className="flex justify-end border-t p-2">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() => setPositionsPopoverOpen(false)}
-                                >
-                                  Done
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        {positionNames.length === 0 && (
-                          <p className="text-sm text-muted-foreground">
-                            Add positions from the <Link href="/positions" className="underline">Positions</Link> page.
-                          </p>
-                        )}
-                        {selectedPositions.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {selectedPositions.map((position) => (
-                              <Badge key={position} variant="secondary" className="text-xs">
-                                {position}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                        {fieldErrors.positions && (
-                          <p className="text-sm text-destructive mt-1">{fieldErrors.positions}</p>
-                        )}
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="notes">Notes</Label>
-                        <Textarea
-                          id="notes"
-                          name="notes"
-                          placeholder="Add any additional notes about the player..."
-                          defaultValue={editingPlayer?.notes || ''}
-                          disabled={loading}
-                          rows={4}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={closeDialog}
-                      disabled={loading}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={loading}>
-                      {loading
-                        ? 'Saving...'
-                        : editingPlayer
-                        ? 'Update Player'
-                        : 'Create Player'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            isMobile ? (
+              <Sheet
+                open={isDialogOpen}
+                onOpenChange={(open) => {
+                  setIsDialogOpen(open)
+                  if (!open) {
+                    setEditingPlayer(null)
+                    setSelectedPositions([])
+                    setSelectedTeamId('')
+                    setContactNumber('')
+                    setPositionsPopoverOpen(false)
+                    setProfileImagePreview(null)
+                    setDobDate(undefined)
+                    setError(null)
+                    setFieldErrors({})
+                  }
+                }}
+              >
+                <SheetTrigger asChild>
+                  <Button onClick={openCreateDialog} className="w-full sm:w-auto">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Player
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[100svh] w-screen overflow-y-auto">
+                  {playerForm}
+                </SheetContent>
+              </Sheet>
+            ) : (
+              <Dialog
+                open={isDialogOpen}
+                onOpenChange={(open) => {
+                  setIsDialogOpen(open)
+                  if (!open) {
+                    setEditingPlayer(null)
+                    setSelectedPositions([])
+                    setSelectedTeamId('')
+                    setContactNumber('')
+                    setPositionsPopoverOpen(false)
+                    setProfileImagePreview(null)
+                    setDobDate(undefined)
+                    setError(null)
+                    setFieldErrors({})
+                  }
+                }}
+              >
+                <DialogTrigger asChild>
+                  <Button onClick={openCreateDialog} className="w-full sm:w-auto">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Player
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                  {playerForm}
+                </DialogContent>
+              </Dialog>
+            )
           )}
         </div>
       </div>
@@ -756,82 +806,147 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
           </p>
         </div>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Age</TableHead>
-                <TableHead>Positions</TableHead>
-                <TableHead>Team</TableHead>
-                {canEdit && <TableHead className="text-right">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPlayers.map((player) => {
-                const age = differenceInYears(new Date(), new Date(player.dob))
-                return (
-                  <TableRow key={player.id}>
-                    <TableCell className="font-medium">
+        <>
+          <div className="space-y-3 md:hidden">
+            {filteredPlayers.map((player) => {
+              const age = differenceInYears(new Date(), new Date(player.dob))
+              return (
+                <div key={player.id} className="rounded-md border p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
                       <Link
                         href={`/players/${player.id}`}
-                        className="hover:underline"
+                        className="font-semibold hover:underline"
                       >
                         {player.firstName} {player.lastName}
                       </Link>
-                    </TableCell>
-                    <TableCell>{age}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {player.positions && player.positions.length > 0 ? (
-                          player.positions.slice(0, 2).map((position) => (
-                            <Badge key={position} variant="secondary" className="text-xs">
-                              {position}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                        {player.positions && player.positions.length > 2 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{player.positions.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {player.teams?.name || (
-                        <span className="text-muted-foreground">No team</span>
-                      )}
-                    </TableCell>
+                      <p className="text-sm text-muted-foreground">Age {age}</p>
+                    </div>
                     {canEdit && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(player)}
-                            disabled={loading}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(player.id)}
-                            disabled={loading}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                      <div className="flex shrink-0 gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10"
+                          onClick={() => openEditDialog(player)}
+                          disabled={loading}
+                          aria-label="Edit player"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10"
+                          onClick={() => handleDelete(player.id)}
+                          disabled={loading}
+                          aria-label="Delete player"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {player.positions && player.positions.length > 0 ? (
+                      player.positions.slice(0, 3).map((position) => (
+                        <Badge key={position} variant="secondary" className="text-xs">
+                          {position}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No positions</span>
+                    )}
+                    {player.positions && player.positions.length > 3 && (
+                      <Badge variant="secondary" className="text-xs">
+                        +{player.positions.length - 3}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="mt-2 text-sm text-muted-foreground truncate">
+                    {player.teams?.name || 'No team'}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="hidden md:block rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Age</TableHead>
+                  <TableHead>Positions</TableHead>
+                  <TableHead>Team</TableHead>
+                  {canEdit && <TableHead className="text-right">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPlayers.map((player) => {
+                  const age = differenceInYears(new Date(), new Date(player.dob))
+                  return (
+                    <TableRow key={player.id}>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/players/${player.id}`}
+                          className="hover:underline"
+                        >
+                          {player.firstName} {player.lastName}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{age}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {player.positions && player.positions.length > 0 ? (
+                            player.positions.slice(0, 2).map((position) => (
+                              <Badge key={position} variant="secondary" className="text-xs">
+                                {position}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                          {player.positions && player.positions.length > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{player.positions.length - 2}
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
-                    )}
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                      <TableCell>
+                        {player.teams?.name || (
+                          <span className="text-muted-foreground">No team</span>
+                        )}
+                      </TableCell>
+                      {canEdit && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditDialog(player)}
+                              disabled={loading}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(player.id)}
+                              disabled={loading}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </div>
   )

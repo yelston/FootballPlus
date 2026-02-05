@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -12,6 +12,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
@@ -25,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useIsMobile } from '@/lib/hooks/use-media-query'
 
 interface Team {
   id: string
@@ -70,16 +79,23 @@ export function AttendanceDialog({
   >({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isMobile = useIsMobile()
+
+  const HeaderComponent = isMobile ? SheetHeader : DialogHeader
+  const TitleComponent = isMobile ? SheetTitle : DialogTitle
+  const DescriptionComponent = isMobile ? SheetDescription : DialogDescription
+  const FooterComponent = isMobile ? SheetFooter : DialogFooter
 
   const dateString = format(date, 'yyyy-MM-dd')
 
-  useEffect(() => {
-    if (open) {
-      loadExistingAttendance()
+  const getFilteredPlayers = useCallback(() => {
+    if (selectedTeam === 'all') {
+      return players
     }
-  }, [open, dateString, selectedTeam])
+    return players.filter((p) => p.teamId === selectedTeam)
+  }, [players, selectedTeam])
 
-  const loadExistingAttendance = async () => {
+  const loadExistingAttendance = useCallback(async () => {
     const supabase = createClient()
     const { data } = await supabase
       .from('attendance')
@@ -87,7 +103,7 @@ export function AttendanceDialog({
       .eq('date', dateString)
 
     const records: Record<string, { points: number; exists: boolean; id?: string }> = {}
-    
+
     if (data) {
       data.forEach((record) => {
         records[record.playerId] = {
@@ -110,14 +126,13 @@ export function AttendanceDialog({
     })
 
     setAttendanceRecords(records)
-  }
+  }, [dateString, getFilteredPlayers])
 
-  const getFilteredPlayers = () => {
-    if (selectedTeam === 'all') {
-      return players
+  useEffect(() => {
+    if (open) {
+      loadExistingAttendance()
     }
-    return players.filter((p) => p.teamId === selectedTeam)
-  }
+  }, [open, loadExistingAttendance])
 
   const handlePointsChange = (playerId: string, points: number) => {
     setAttendanceRecords((prev) => ({
@@ -181,48 +196,88 @@ export function AttendanceDialog({
 
   const filteredPlayers = getFilteredPlayers()
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Attendance - {format(date, 'MMMM d, yyyy')}</DialogTitle>
-          <DialogDescription>
-            {canEdit
-              ? 'Update attendance and points for players.'
-              : 'View attendance records for this date.'}
-          </DialogDescription>
-        </DialogHeader>
+  const dialogBody = (
+    <>
+      <HeaderComponent>
+        <TitleComponent>Attendance - {format(date, 'MMMM d, yyyy')}</TitleComponent>
+        <DescriptionComponent>
+          {canEdit
+            ? 'Update attendance and points for players.'
+            : 'View attendance records for this date.'}
+        </DescriptionComponent>
+      </HeaderComponent>
 
-        <div className="space-y-4 py-4">
-          {error && (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          <div className="grid gap-2">
-            <Label htmlFor="team">Filter by Team</Label>
-            <Select
-              id="team"
-              value={selectedTeam}
-              onChange={(e) => setSelectedTeam(e.target.value)}
-              disabled={loading || !canEdit}
-            >
-              <option value="all">All Teams</option>
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </Select>
+      <div className="space-y-4 py-4">
+        {error && (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            {error}
           </div>
+        )}
 
-          {filteredPlayers.length === 0 ? (
-            <div className="rounded-lg border p-4 text-center text-muted-foreground">
-              No players found for selected team.
+        <div className="grid gap-2">
+          <Label htmlFor="team">Filter by Team</Label>
+          <Select
+            id="team"
+            value={selectedTeam}
+            onChange={(e) => setSelectedTeam(e.target.value)}
+            disabled={loading || !canEdit}
+          >
+            <option value="all">All Teams</option>
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        {filteredPlayers.length === 0 ? (
+          <div className="rounded-lg border p-4 text-center text-muted-foreground">
+            No players found for selected team.
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2 md:hidden">
+              {filteredPlayers.map((player) => {
+                const record = attendanceRecords[player.id] || {
+                  points: 1,
+                  exists: false,
+                }
+                const team = teams.find((t) => t.id === player.teamId)
+
+                return (
+                  <div key={player.id} className="rounded-md border p-3">
+                    <p className="font-semibold">
+                      {player.firstName} {player.lastName}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {team?.name || 'No team'}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <span className="text-sm text-muted-foreground">Points</span>
+                      {canEdit ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          value={record.points}
+                          onChange={(e) =>
+                            handlePointsChange(
+                              player.id,
+                              parseInt(e.target.value) || 0
+                            )
+                          }
+                          disabled={loading}
+                          className="w-20"
+                        />
+                      ) : (
+                        <span className="font-medium">{record.points}</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          ) : (
-            <div className="rounded-md border">
+            <div className="hidden md:block rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -276,20 +331,36 @@ export function AttendanceDialog({
                 </TableBody>
               </Table>
             </div>
-          )}
-        </div>
+          </>
+        )}
+      </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            {canEdit ? 'Cancel' : 'Close'}
+      <FooterComponent>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          {canEdit ? 'Cancel' : 'Close'}
+        </Button>
+        {canEdit && (
+          <Button onClick={handleSubmit} disabled={loading}>
+            {loading ? 'Saving...' : 'Save Attendance'}
           </Button>
-          {canEdit && (
-            <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Saving...' : 'Save Attendance'}
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        )}
+      </FooterComponent>
+    </>
+  )
+
+  return (
+    isMobile ? (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="h-[100svh] w-screen overflow-y-auto">
+          {dialogBody}
+        </SheetContent>
+      </Sheet>
+    ) : (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          {dialogBody}
+        </DialogContent>
+      </Dialog>
+    )
   )
 }

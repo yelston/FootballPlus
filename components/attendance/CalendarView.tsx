@@ -44,6 +44,7 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
   const calendarStart = startOfWeek(monthStart)
   const calendarEnd = endOfWeek(monthEnd)
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
+  const agendaDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
   const rangeStart = format(calendarStart, 'yyyy-MM-dd')
   const rangeEnd = format(calendarEnd, 'yyyy-MM-dd')
@@ -152,7 +153,48 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="md:hidden space-y-2">
+            {agendaDays.map((day) => {
+              const isToday = isSameDay(day, new Date())
+              const isPast = day < new Date() && !isToday
+              const dateStr = format(day, 'yyyy-MM-dd')
+              const summary = submissionsByDate[dateStr] ?? []
+              const total = summary.reduce((sum, s) => sum + s.count, 0)
+
+              return (
+                <button
+                  key={dateStr}
+                  onClick={() => handleDateClick(day)}
+                  disabled={!canEdit && !isToday}
+                  className={`w-full rounded-md border p-3 text-left transition-colors ${canEdit || isToday ? 'hover:bg-accent' : 'cursor-not-allowed'} ${isToday ? 'border-primary' : ''} ${isPast && !isToday ? 'opacity-70' : ''}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">
+                      {format(day, 'EEE, MMM d')}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {total} {total === 1 ? 'entry' : 'entries'}
+                    </span>
+                  </div>
+                  {summary.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {summary.map((s) => (
+                        <span
+                          key={s.teamId ?? 'none'}
+                          className="rounded-full bg-muted px-2 py-0.5 text-xs"
+                        >
+                          {s.teamName}: {s.count}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">No submissions</p>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+          <div className="hidden md:grid grid-cols-7 gap-1">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
               <div
                 key={day}

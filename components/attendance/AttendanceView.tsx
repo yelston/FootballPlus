@@ -27,7 +27,7 @@ interface AttendanceViewProps {
 export function AttendanceView({ teams, players, canEdit }: AttendanceViewProps) {
   return (
     <Tabs defaultValue="calendar" className="w-full min-w-0 overflow-hidden">
-      <TabsList className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] overflow-hidden pb-1 lg:pb-2">
+      <TabsList className="grid h-auto w-full min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] overflow-hidden lg:h-10">
         <TabsTrigger value="calendar" className="min-w-0 truncate px-2 sm:px-3">
           Calendar
         </TabsTrigger>

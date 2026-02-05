@@ -46,7 +46,7 @@ export default async function PlayerDetailPage({
           </CardHeader>
           <CardContent className="space-y-4">
             {player.profileImageUrl && (
-              <div className="relative h-48 w-48 overflow-hidden rounded-lg border">
+              <div className="relative w-full max-w-xs aspect-square overflow-hidden rounded-lg border mx-auto sm:mx-0">
                 <Image
                   src={player.profileImageUrl}
                   alt={`${player.firstName} ${player.lastName}`}

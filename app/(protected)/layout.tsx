@@ -21,7 +21,7 @@ export default async function ProtectedLayout({
     <SidebarProvider>
       <div className="flex min-h-screen">
         <Sidebar userRole={user.role} />
-        <main className="flex-1 min-w-0 lg:ml-64">
+        <main className="flex-1 min-w-0 lg:ml-64 overflow-x-hidden">
           <div className="p-4 pt-2 lg:p-8 lg:pt-8">
             <div className="lg:hidden flex items-center shrink-0 mb-2">
               <SidebarTrigger />
