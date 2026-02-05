@@ -26,7 +26,7 @@ export default async function PlayerDetailPage({
     .from('players')
     .select('*, teams(name)')
     .eq('id', params.id)
-    .single()
+    .single() as { data: PlayerWithTeam | null }
 
   if (!player) {
     notFound()
