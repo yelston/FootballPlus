@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -15,7 +15,6 @@ type UserRow = Database['public']['Tables']['users']['Row']
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -23,6 +22,7 @@ export default function LoginPage() {
 
   // Clear invalid session if redirected here with invalid_session param
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
     const invalidSession = searchParams.get('invalid_session')
     if (invalidSession === '1') {
       const supabase = createClient()
@@ -30,7 +30,7 @@ export default function LoginPage() {
       // Remove the query param from URL
       router.replace('/login')
     }
-  }, [searchParams, router])
+  }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
