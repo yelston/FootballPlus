@@ -135,14 +135,16 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Chevron: isDropdownLayout
-          ? () => null
-          : ({ orientation }) =>
-              orientation === "left" ? (
-                <ChevronLeft className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              ),
+        ...(isDropdownLayout
+          ? {}
+          : {
+              Chevron: ({ orientation }) =>
+                orientation === "left" ? (
+                  <ChevronLeft className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                ),
+            }),
         DayButton: ({ ...props }) => (
           <CalendarDayButton locale={locale} {...props} />
         ),
