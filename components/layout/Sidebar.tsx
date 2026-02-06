@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { 
   LayoutDashboard, 
@@ -35,12 +36,21 @@ export function Sidebar({ userRole }: SidebarProps) {
   const { isOpen, setIsOpen } = useSidebar()
   const pathname = usePathname()
   const router = useRouter()
+  const [prefetched] = useState(() => new Set<string>())
 
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
+  }
+
+  const handlePrefetch = (href: string) => {
+    if (prefetched.has(href)) {
+      return
+    }
+    prefetched.add(href)
+    router.prefetch(href)
   }
 
   const filteredNavigation = navigation.filter((item) => {
@@ -92,6 +102,8 @@ export function Sidebar({ userRole }: SidebarProps) {
                   key={item.name}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
+                  onMouseEnter={() => handlePrefetch(item.href)}
+                  onFocus={() => handlePrefetch(item.href)}
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                     isActive

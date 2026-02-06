@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
+import { useToast } from '@/components/ui/toast'
 import { Plus, Search, Edit, Trash2 } from 'lucide-react'
 import type { User } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
@@ -27,6 +28,7 @@ interface UsersListProps {
 
 export function UsersList({ initialUsers }: UsersListProps) {
   const router = useRouter()
+  const toast = useToast()
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [searchQuery, setSearchQuery] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -70,7 +72,8 @@ export function UsersList({ initialUsers }: UsersListProps) {
 
     const formData = new FormData(e.currentTarget)
     const name = formData.get('name') as string
-    const email = formData.get('email') as string
+    const emailFromForm = formData.get('email') as string | null
+    const email = emailFromForm || editingUser?.email || ''
     const contactNumber = formData.get('contactNumber') as string
     const role = formData.get('role') as 'admin' | 'coach' | 'volunteer'
 
@@ -100,6 +103,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
               : u
           )
         )
+        toast.success('User updated')
         setIsDialogOpen(false)
         setEditingUser(null)
         setLoading(false)
@@ -136,6 +140,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
           },
           ...users,
         ])
+        toast.success('User created')
         setIsDialogOpen(false)
         setLoading(false)
         router.refresh()
@@ -224,7 +229,6 @@ export function UsersList({ initialUsers }: UsersListProps) {
                     name="contactNumber"
                     type="tel"
                     defaultValue={editingUser?.contactNumber || ''}
-                    placeholder="+1 (555) 123-4567"
                     disabled={loading}
                   />
                 </div>

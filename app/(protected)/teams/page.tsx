@@ -16,38 +16,38 @@ export default async function TeamsPage() {
   }
 
   const supabase = createClient()
-  const { data: teams } = await supabase
-    .from('teams')
-    .select('*')
-    .order('createdAt', { ascending: false })
-    .returns<TeamRow[]>()
-  
-  // Get main coaches for teams
-  const teamIds = teams?.map(t => t.mainCoachId).filter(Boolean) || []
-  const { data: coaches } = teamIds.length > 0 ? await supabase
-    .from('users')
-    .select('id, name, email')
-    .in('id', teamIds)
-    .returns<Pick<UserRow, 'id' | 'name' | 'email'>[]>() : { data: [] }
-  
-  // Get player counts
-  const { data: playerCounts } = await supabase
-    .from('players')
-    .select('teamId')
-    .returns<Pick<PlayerRow, 'teamId'>[]>()
-  
+  const [{ data: teams }, { data: users }, { data: playerCounts }] = await Promise.all([
+    supabase
+      .from('teams')
+      .select('*')
+      .order('createdAt', { ascending: false })
+      .returns<TeamRow[]>(),
+    supabase
+      .from('users')
+      .select('id, name, email, role')
+      .in('role', ['coach', 'volunteer', 'admin'])
+      .order('name')
+      .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>(),
+    supabase
+      .from('players')
+      .select('teamId')
+      .returns<Pick<PlayerRow, 'teamId'>[]>(),
+  ])
+
+  const coachMap = new Map(users?.map((u) => [u.id, u]) || [])
+  const playerCountMap = new Map<string, number>()
+  playerCounts?.forEach((player) => {
+    if (!player.teamId) {
+      return
+    }
+    playerCountMap.set(player.teamId, (playerCountMap.get(player.teamId) || 0) + 1)
+  })
+
   const teamsWithData = teams?.map(team => ({
     ...team,
-    mainCoach: coaches?.find(c => c.id === team.mainCoachId) || null,
-    players: [{ count: playerCounts?.filter(p => p.teamId === team.id).length || 0 }]
+    mainCoach: coachMap.get(team.mainCoachId || '') || null,
+    players: [{ count: playerCountMap.get(team.id) || 0 }]
   })) || []
-
-  const { data: users } = await supabase
-    .from('users')
-    .select('id, name, email, role')
-    .in('role', ['coach', 'volunteer', 'admin'])
-    .order('name')
-    .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>()
 
   return (
     <div className="space-y-6">

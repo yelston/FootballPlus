@@ -17,23 +17,23 @@ export default async function PlayersPage() {
   }
 
   const supabase = createClient()
-  const { data: players } = await supabase
-    .from('players')
-    .select('*, teams(name)')
-    .order('createdAt', { ascending: false })
-    .returns<PlayerWithTeam[]>()
-
-  const { data: teams } = await supabase
-    .from('teams')
-    .select('id, name')
-    .order('name')
-    .returns<Pick<TeamRow, 'id' | 'name'>[]>()
-
-  const { data: positions } = await supabase
-    .from('positions')
-    .select('id, name')
-    .order('sortOrder', { ascending: true })
-    .returns<Pick<PositionRow, 'id' | 'name'>[]>()
+  const [{ data: players }, { data: teams }, { data: positions }] = await Promise.all([
+    supabase
+      .from('players')
+      .select('*, teams(name)')
+      .order('createdAt', { ascending: false })
+      .returns<PlayerWithTeam[]>(),
+    supabase
+      .from('teams')
+      .select('id, name')
+      .order('name')
+      .returns<Pick<TeamRow, 'id' | 'name'>[]>(),
+    supabase
+      .from('positions')
+      .select('id, name')
+      .order('sortOrder', { ascending: true })
+      .returns<Pick<PositionRow, 'id' | 'name'>[]>(),
+  ])
 
   return (
     <div className="space-y-6">

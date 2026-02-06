@@ -11,20 +11,21 @@ export async function POST(request: Request) {
 
     const supabase = createAdminClient()
     
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password: Math.random().toString(36).slice(-12) + 'A1!', // Temporary password
-      email_confirm: true,
-    })
+    // Invite auth user (sends email invite to set password)
+    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email)
 
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: 400 })
+    if (inviteError) {
+      return NextResponse.json({ error: inviteError.message }, { status: 400 })
+    }
+
+    const invitedUserId = inviteData?.user?.id
+    if (!invitedUserId) {
+      return NextResponse.json({ error: 'Invite failed to return a user id.' }, { status: 500 })
     }
 
     // Create user record
     const newUser = {
-      id: authData.user.id,
+      id: invitedUserId,
       name,
       email,
       contactNumber: contactNumber || null,
@@ -34,16 +35,12 @@ export async function POST(request: Request) {
     const { error: userError } = await supabase.from('users').insert(newUser)
 
     if (userError) {
+      // Cleanup auth user if DB insert fails to avoid orphans
+      await supabase.auth.admin.deleteUser(invitedUserId)
       return NextResponse.json({ error: userError.message }, { status: 400 })
     }
 
-    // Send invite email
-    await supabase.auth.admin.generateLink({
-      type: 'invite',
-      email,
-    })
-
-    return NextResponse.json({ success: true, userId: authData.user.id })
+    return NextResponse.json({ success: true, userId: invitedUserId })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

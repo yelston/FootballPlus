@@ -39,6 +39,7 @@ import { Select } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { DateOfBirthPicker } from '@/components/ui/date-picker'
+import { useToast } from '@/components/ui/toast'
 import { Plus, Search, Edit, Trash2, Filter, ChevronDown } from 'lucide-react'
 import { differenceInYears } from 'date-fns'
 import Image from 'next/image'
@@ -81,6 +82,7 @@ interface PlayersListProps {
 export function PlayersList({ initialPlayers, teams, positions, canEdit }: PlayersListProps) {
   const positionNames = positions.map((p) => p.name)
   const router = useRouter()
+  const toast = useToast()
   const isMobile = useIsMobile()
   const [players, setPlayers] = useState<Player[]>(initialPlayers)
   const [searchQuery, setSearchQuery] = useState('')
@@ -263,6 +265,7 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
               : p
           )
         )
+        toast.success('Player updated')
         setIsDialogOpen(false)
         setEditingPlayer(null)
         setDobDate(undefined)
@@ -291,6 +294,7 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
         setLoading(false)
       } else {
         setPlayers([data!, ...players])
+        toast.success('Player created')
         setIsDialogOpen(false)
         setDobDate(undefined)
         setLoading(false)

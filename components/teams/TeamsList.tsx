@@ -36,6 +36,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useToast } from '@/components/ui/toast'
 import { Plus, Edit, Search, Eye } from 'lucide-react'
 import { useIsMobile } from '@/lib/hooks/use-media-query'
 import type { Database } from '@/types/database'
@@ -69,6 +70,7 @@ interface TeamsListProps {
 
 export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
   const router = useRouter()
+  const toast = useToast()
   const isMobile = useIsMobile()
   const [teams, setTeams] = useState<Team[]>(initialTeams)
   const [searchQuery, setSearchQuery] = useState('')
@@ -135,6 +137,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
         setError(error.message)
         setLoading(false)
       } else {
+        const mainCoach = coaches.find((c) => c.id === mainCoachId) || null
         setTeams(
           teams.map((t) =>
             t.id === editingTeam.id
@@ -142,6 +145,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
                   ...t,
                   name,
                   mainCoachId: mainCoachId || null,
+                  mainCoach,
                   coachIds,
                   volunteerIds,
                   notes: notes || null,
@@ -149,6 +153,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
               : t
           )
         )
+        toast.success('Team updated')
         setIsDialogOpen(false)
         setEditingTeam(null)
         setLoading(false)
@@ -172,7 +177,9 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
         setError(error.message)
         setLoading(false)
       } else {
-        setTeams([data!, ...teams])
+        const mainCoach = coaches.find((c) => c.id === mainCoachId) || null
+        setTeams([{ ...data!, mainCoach }, ...teams])
+        toast.success('Team created')
         setIsDialogOpen(false)
         setLoading(false)
         router.refresh()
@@ -248,7 +255,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
             <option value="">Select a main coach...</option>
             {coaches.map((coach) => (
               <option key={coach.id} value={coach.id}>
-                {coach.name} ({coach.email})
+                {coach.name}
               </option>
             ))}
           </Select>
