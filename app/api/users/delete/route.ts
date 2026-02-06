@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/auth'
 import { NextResponse } from 'next/server'
+import type { Database } from '@/types/database'
 
 export async function POST(request: Request) {
   try {
@@ -28,10 +29,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: attendanceError.message }, { status: 400 })
     }
 
+    type TeamRow = Database['public']['Tables']['teams']['Row']
     const { data: teams, error: teamsError } = await supabase
       .from('teams')
       .select('id, mainCoachId, coachIds, volunteerIds')
-      .or(`mainCoachId.eq.${userId},coachIds.cs.{${userId}},volunteerIds.cs.{${userId}}`)
+      .or(`mainCoachId.eq.${userId},coachIds.cs.{${userId}},volunteerIds.cs.{${userId}}`) as {
+        data: Pick<TeamRow, 'id' | 'mainCoachId' | 'coachIds' | 'volunteerIds'>[] | null
+        error: any
+      }
 
     if (teamsError) {
       return NextResponse.json({ error: teamsError.message }, { status: 400 })
