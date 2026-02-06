@@ -32,6 +32,28 @@ export default function LoginPage() {
     }
   }, [router])
 
+  // Handle invite links that arrive with tokens in the URL hash
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash || !hash.includes('access_token=')) return
+
+    const acceptInviteFromHash = async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true })
+      if (error) {
+        setError(error.message)
+        return
+      }
+
+      if (data.session) {
+        router.replace('/reset-password')
+        router.refresh()
+      }
+    }
+
+    acceptInviteFromHash()
+  }, [router])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
