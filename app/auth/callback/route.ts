@@ -4,9 +4,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const token = requestUrl.searchParams.get('token')
+  const tokenHash = requestUrl.searchParams.get('token_hash')
+  const type = requestUrl.searchParams.get('type')
   const next = requestUrl.searchParams.get('next') || '/reset-password'
 
-  if (!code) {
+  if (!code && !token && !tokenHash) {
     return NextResponse.redirect(new URL('/login?invalid_session=1', requestUrl.origin))
   }
 
@@ -32,7 +35,22 @@ export async function GET(request: NextRequest) {
     }
   )
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  let error: { message?: string } | null = null
+
+  if (code) {
+    const result = await supabase.auth.exchangeCodeForSession(code)
+    error = result.error
+  } else {
+    const tokenValue = tokenHash || token
+    if (!tokenValue || !type) {
+      return NextResponse.redirect(new URL('/login?invalid_session=1', requestUrl.origin))
+    }
+    const result = await supabase.auth.verifyOtp({
+      token_hash: tokenValue,
+      type: type as any,
+    })
+    error = result.error
+  }
 
   if (error) {
     return NextResponse.redirect(new URL('/login?invalid_session=1', requestUrl.origin))
