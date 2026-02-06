@@ -148,20 +148,33 @@ function Calendar({
         DayButton: ({ ...props }) => (
           <CalendarDayButton locale={locale} {...props} />
         ),
-        Dropdown: ({ value, onChange, children, ...props }) => {
+        Dropdown: ({
+          value,
+          onChange,
+          options,
+          className,
+          components: _components,
+          classNames: _classNames,
+          ...props
+        }) => {
           return (
             <select
               className={cn(
                 "flex h-8 w-fit items-center rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
-                props.className
+                className
               )}
               value={value}
               onChange={(e) => {
                 const changeEvent = e as React.ChangeEvent<HTMLSelectElement>
                 onChange?.(changeEvent)
               }}
+              {...props}
             >
-              {children}
+              {options?.map(({ value: optionValue, label, disabled }) => (
+                <option key={optionValue} value={optionValue} disabled={disabled}>
+                  {label}
+                </option>
+              ))}
             </select>
           )
         },
