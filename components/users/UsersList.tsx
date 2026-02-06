@@ -39,6 +39,8 @@ export function UsersList({ initialUsers }: UsersListProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const normalizeContactNumber = (value: string) => value.replace(/\D/g, '')
+
   const filteredUsers = users.filter((user) => {
     const query = searchQuery.toLowerCase()
     return (
@@ -79,13 +81,32 @@ export function UsersList({ initialUsers }: UsersListProps) {
     setError(null)
 
     const formData = new FormData(e.currentTarget)
-    const name = formData.get('name') as string
+    const name = (formData.get('name') as string) || ''
     const emailFromForm = formData.get('email') as string | null
     const email = emailFromForm || editingUser?.email || ''
-    const contactNumber = formData.get('contactNumber') as string
+    const contactNumberRaw = (formData.get('contactNumber') as string) || ''
+    const contactNumber = normalizeContactNumber(contactNumberRaw)
     const role = formData.get('role') as 'admin' | 'coach' | 'volunteer'
 
     const supabase = createClient()
+
+    if (!name.trim()) {
+      setError('Name is required.')
+      setLoading(false)
+      return
+    }
+
+    if (!role) {
+      setError('Role is required.')
+      setLoading(false)
+      return
+    }
+
+    if (contactNumberRaw && contactNumberRaw !== contactNumber) {
+      setError('Contact number can only contain digits.')
+      setLoading(false)
+      return
+    }
 
     if (editingUser) {
       // Update existing user
@@ -226,7 +247,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
                   </div>
                 )}
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="name">Name *</Label>
                   <Input
                     id="name"
                     name="name"
@@ -252,12 +273,21 @@ export function UsersList({ initialUsers }: UsersListProps) {
                     id="contactNumber"
                     name="contactNumber"
                     type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="tel"
                     defaultValue={editingUser?.contactNumber || ''}
                     disabled={loading}
+                    onChange={(e) => {
+                      const nextValue = normalizeContactNumber(e.currentTarget.value)
+                      if (e.currentTarget.value !== nextValue) {
+                        e.currentTarget.value = nextValue
+                      }
+                    }}
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">Role *</Label>
                   <Select
                     id="role"
                     name="role"
