@@ -66,7 +66,8 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/login') ||
     path.startsWith('/signup') ||
     path.startsWith('/forgot-password') ||
-    path.startsWith('/reset-password')
+    path.startsWith('/reset-password') ||
+    path.startsWith('/auth/callback')
 
   // If there's an auth error or no user, treat as unauthenticated
   const isAuthenticated = user && !authError

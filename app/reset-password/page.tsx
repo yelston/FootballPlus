@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -16,10 +16,30 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [sessionChecked, setSessionChecked] = useState(false)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.getUser()
+      if (error || !data.user) {
+        setSessionError('This link is invalid or has expired. Please request a new reset link.')
+      }
+      setSessionChecked(true)
+    }
+
+    checkSession()
+  }, [])
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    if (sessionError) {
+      setError(sessionError)
+      return
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match')
@@ -63,6 +83,45 @@ export default function ResetPasswordPage() {
             </p>
             <Button asChild className="w-full">
               <Link href="/login">Go to Login</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!sessionChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl">Reset Password</CardTitle>
+            <CardDescription>Checking your link...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Please wait while we verify your reset link.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (sessionError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl">Reset Password</CardTitle>
+            <CardDescription>Link expired</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+              {sessionError}
+            </div>
+            <Button asChild className="w-full">
+              <Link href="/forgot-password">Request a new link</Link>
             </Button>
           </CardContent>
         </Card>

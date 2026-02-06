@@ -51,17 +51,24 @@ export function UsersList({ initialUsers }: UsersListProps) {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { error } = await supabase.from('users').delete().eq('id', userId)
+    const response = await fetch('/api/users/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    })
 
-    if (error) {
-      setError(error.message)
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result.error || 'Failed to delete user')
+      toast.error(result.error || 'Failed to delete user')
       setLoading(false)
       return false
     } else {
       setUsers(users.filter((u) => u.id !== userId))
       setLoading(false)
       router.refresh()
+      toast.success('User deleted')
       return true
     }
   }

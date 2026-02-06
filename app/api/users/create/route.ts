@@ -11,8 +11,14 @@ export async function POST(request: Request) {
 
     const supabase = createAdminClient()
     
+    const requestUrl = new URL(request.url)
+    const redirectTo = `${requestUrl.origin}/auth/callback?next=/reset-password`
+
     // Invite auth user (sends email invite to set password)
-    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email)
+    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
+      email,
+      { redirectTo }
+    )
 
     if (inviteError) {
       return NextResponse.json({ error: inviteError.message }, { status: 400 })
