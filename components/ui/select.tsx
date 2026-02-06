@@ -183,7 +183,10 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     }, [options, selectedValue])
 
     // Create a hidden native select for form submission
-    const hiddenSelectRef = React.useRef<HTMLSelectElement>(null)
+    const hiddenSelectRef =
+      React.useRef<HTMLSelectElement | null>(null) as React.MutableRefObject<
+        HTMLSelectElement | null
+      >
 
     // Use a placeholder value for empty strings since Radix UI doesn't allow empty string values
     const PLACEHOLDER_VALUE = "__none__"
