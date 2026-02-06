@@ -9,6 +9,17 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { name, email, contactNumber, role } = body
 
+    if (!name || !email || !role) {
+      return NextResponse.json({ error: 'Missing required fields: name, email, role.' }, { status: 400 })
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json(
+        { error: 'Missing SUPABASE_SERVICE_ROLE_KEY environment variable.' },
+        { status: 500 }
+      )
+    }
+
     const supabase = createAdminClient()
     
     const requestUrl = new URL(request.url)
@@ -21,7 +32,16 @@ export async function POST(request: Request) {
     )
 
     if (inviteError) {
-      return NextResponse.json({ error: inviteError.message }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: inviteError.message,
+          details: {
+            status: (inviteError as any).status ?? null,
+            code: (inviteError as any).code ?? null,
+          },
+        },
+        { status: 400 }
+      )
     }
 
     const invitedUserId = inviteData?.user?.id
@@ -43,7 +63,15 @@ export async function POST(request: Request) {
     if (userError) {
       // Cleanup auth user if DB insert fails to avoid orphans
       await supabase.auth.admin.deleteUser(invitedUserId)
-      return NextResponse.json({ error: userError.message }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: userError.message,
+          details: {
+            code: (userError as any).code ?? null,
+          },
+        },
+        { status: 400 }
+      )
     }
 
     return NextResponse.json({ success: true, userId: invitedUserId })
