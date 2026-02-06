@@ -11,6 +11,9 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "Football Plus",
   description: "Youth Soccer Academy Management Platform",
+  icons: {
+    icon: "/images/logo/FP%20Logo.png",
+  },
 }
 
 export default function RootLayout({
