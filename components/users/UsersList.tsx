@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useToast } from '@/components/ui/toast'
 import { Plus, Search, Edit, Trash2 } from 'lucide-react'
 import type { User } from '@/lib/auth'
@@ -32,7 +33,9 @@ export function UsersList({ initialUsers }: UsersListProps) {
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [searchQuery, setSearchQuery] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,10 +48,6 @@ export function UsersList({ initialUsers }: UsersListProps) {
   })
 
   const handleDelete = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) {
-      return
-    }
-
     setLoading(true)
     setError(null)
 
@@ -58,10 +57,12 @@ export function UsersList({ initialUsers }: UsersListProps) {
     if (error) {
       setError(error.message)
       setLoading(false)
+      return false
     } else {
       setUsers(users.filter((u) => u.id !== userId))
       setLoading(false)
       router.refresh()
+      return true
     }
   }
 
@@ -162,6 +163,22 @@ export function UsersList({ initialUsers }: UsersListProps) {
     setIsDialogOpen(false)
     setEditingUser(null)
     setError(null)
+  }
+
+  const openDeleteDialog = (user: User) => {
+    setDeleteTarget(user)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) {
+      return
+    }
+    const didDelete = await handleDelete(deleteTarget.id)
+    if (didDelete) {
+      setIsDeleteDialogOpen(false)
+      setDeleteTarget(null)
+    }
   }
 
   return (
@@ -277,6 +294,25 @@ export function UsersList({ initialUsers }: UsersListProps) {
         </div>
       ) : (
         <>
+          <ConfirmDialog
+            open={isDeleteDialogOpen}
+            onOpenChange={(open) => {
+              setIsDeleteDialogOpen(open)
+              if (!open) {
+                setDeleteTarget(null)
+              }
+            }}
+            title="Delete user?"
+            description={
+              deleteTarget
+                ? `This will permanently delete ${deleteTarget.name}.`
+                : 'This will permanently delete this user.'
+            }
+            confirmLabel="Delete"
+            onConfirm={handleConfirmDelete}
+            loading={loading}
+          />
+
           {/* Mobile: card list */}
           <div className="space-y-3 md:hidden">
             {filteredUsers.map((user) => (
@@ -308,7 +344,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => openDeleteDialog(user)}
                         disabled={loading}
                         aria-label="Delete user"
                       >
@@ -357,7 +393,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(user.id)}
+                          onClick={() => openDeleteDialog(user)}
                           disabled={loading}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />

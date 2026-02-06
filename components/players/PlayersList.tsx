@@ -39,6 +39,7 @@ import { Select } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { DateOfBirthPicker } from '@/components/ui/date-picker'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useToast } from '@/components/ui/toast'
 import { Plus, Search, Edit, Trash2, Filter, ChevronDown } from 'lucide-react'
 import { differenceInYears } from 'date-fns'
@@ -90,7 +91,9 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
   const [positionFilter, setPositionFilter] = useState<string[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Player | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedPositions, setSelectedPositions] = useState<string[]>([])
@@ -129,10 +132,6 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
   })
 
   const handleDelete = async (playerId: string) => {
-    if (!confirm('Are you sure you want to delete this player?')) {
-      return
-    }
-
     setLoading(true)
     setError(null)
 
@@ -142,10 +141,12 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
     if (error) {
       setError(error.message)
       setLoading(false)
+      return false
     } else {
       setPlayers(players.filter((p) => p.id !== playerId))
       setLoading(false)
       router.refresh()
+      return true
     }
   }
 
@@ -338,6 +339,22 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
     setDobDate(undefined)
     setError(null)
     setFieldErrors({})
+  }
+
+  const openDeleteDialog = (player: Player) => {
+    setDeleteTarget(player)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) {
+      return
+    }
+    const didDelete = await handleDelete(deleteTarget.id)
+    if (didDelete) {
+      setIsDeleteDialogOpen(false)
+      setDeleteTarget(null)
+    }
   }
 
   const handleProfileImageClick = () => {
@@ -624,6 +641,24 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
 
   return (
     <div className="space-y-4">
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open)
+          if (!open) {
+            setDeleteTarget(null)
+          }
+        }}
+        title="Delete player?"
+        description={
+          deleteTarget
+            ? `This will permanently delete ${deleteTarget.firstName} ${deleteTarget.lastName}.`
+            : 'This will permanently delete this player.'
+        }
+        confirmLabel="Delete"
+        onConfirm={handleConfirmDelete}
+        loading={loading}
+      />
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 max-w-sm flex items-center gap-2">
@@ -847,7 +882,7 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
                           variant="ghost"
                           size="icon"
                           className="h-10 w-10"
-                          onClick={() => handleDelete(player.id)}
+                          onClick={() => openDeleteDialog(player)}
                           disabled={loading}
                           aria-label="Delete player"
                         >
@@ -941,7 +976,7 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDelete(player.id)}
+                              onClick={() => openDeleteDialog(player)}
                               disabled={loading}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
