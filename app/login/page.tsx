@@ -39,16 +39,25 @@ export default function LoginPage() {
 
     const acceptInviteFromHash = async () => {
       const supabase = createClient()
-      const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true })
+      const params = new URLSearchParams(hash.replace(/^#/, ''))
+      const accessToken = params.get('access_token')
+      const refreshToken = params.get('refresh_token')
+      if (!accessToken || !refreshToken) {
+        setError('Invalid invite link. Please request a new invite.')
+        return
+      }
+
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      })
       if (error) {
         setError(error.message)
         return
       }
 
-      if (data.session) {
-        router.replace('/reset-password')
-        router.refresh()
-      }
+      router.replace('/reset-password')
+      router.refresh()
     }
 
     acceptInviteFromHash()
