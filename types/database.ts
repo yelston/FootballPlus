@@ -47,8 +47,29 @@ export interface Database {
           positions: string[]
           teamId: string | null
           profileImageUrl: string | null
+          preferredName: string | null
+          jerseyNumber: number | null
+          dominantFoot: 'left' | 'right' | 'both' | null
           contactNumber: string | null
+          guardianName: string | null
+          guardianRelationship: string | null
+          guardianPhone: string | null
+          guardianEmail: string | null
+          emergencyContactName: string | null
+          emergencyContactRelationship: string | null
+          emergencyContactPhone: string | null
+          medicalNotes: string | null
+          injuryStatus: 'none' | 'rehab' | 'restricted' | 'unavailable'
+          medicationNotes: string | null
+          photoConsent: boolean
+          medicalConsent: boolean
+          transportConsent: boolean
+          strengths: string | null
+          developmentFocus: string | null
+          coachSummary: string | null
           notes: string | null
+          registeredAt: string
+          updatedAt: string
           createdAt: string
         }
         Insert: {
@@ -59,8 +80,29 @@ export interface Database {
           positions?: string[]
           teamId?: string | null
           profileImageUrl?: string | null
+          preferredName?: string | null
+          jerseyNumber?: number | null
+          dominantFoot?: 'left' | 'right' | 'both' | null
           contactNumber?: string | null
+          guardianName?: string | null
+          guardianRelationship?: string | null
+          guardianPhone?: string | null
+          guardianEmail?: string | null
+          emergencyContactName?: string | null
+          emergencyContactRelationship?: string | null
+          emergencyContactPhone?: string | null
+          medicalNotes?: string | null
+          injuryStatus?: 'none' | 'rehab' | 'restricted' | 'unavailable'
+          medicationNotes?: string | null
+          photoConsent?: boolean
+          medicalConsent?: boolean
+          transportConsent?: boolean
+          strengths?: string | null
+          developmentFocus?: string | null
+          coachSummary?: string | null
           notes?: string | null
+          registeredAt?: string
+          updatedAt?: string
           createdAt?: string
         }
         Update: {
@@ -71,8 +113,29 @@ export interface Database {
           positions?: string[]
           teamId?: string | null
           profileImageUrl?: string | null
+          preferredName?: string | null
+          jerseyNumber?: number | null
+          dominantFoot?: 'left' | 'right' | 'both' | null
           contactNumber?: string | null
+          guardianName?: string | null
+          guardianRelationship?: string | null
+          guardianPhone?: string | null
+          guardianEmail?: string | null
+          emergencyContactName?: string | null
+          emergencyContactRelationship?: string | null
+          emergencyContactPhone?: string | null
+          medicalNotes?: string | null
+          injuryStatus?: 'none' | 'rehab' | 'restricted' | 'unavailable'
+          medicationNotes?: string | null
+          photoConsent?: boolean
+          medicalConsent?: boolean
+          transportConsent?: boolean
+          strengths?: string | null
+          developmentFocus?: string | null
+          coachSummary?: string | null
           notes?: string | null
+          registeredAt?: string
+          updatedAt?: string
           createdAt?: string
         }
       }
