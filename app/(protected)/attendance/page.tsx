@@ -5,7 +5,13 @@ import { AttendanceView } from '@/components/attendance/AttendanceView'
 import type { Database } from '@/types/database'
 
 type TeamRow = Database['public']['Tables']['teams']['Row']
-type PlayerRow = Database['public']['Tables']['players']['Row']
+
+interface PlayerQueryResult {
+  id: string
+  firstName: string
+  lastName: string
+  teamId: string | null
+}
 
 export default async function AttendancePage() {
   const user = await getCurrentUser()
@@ -25,7 +31,7 @@ export default async function AttendancePage() {
     .from('players')
     .select('id, firstName, lastName, teamId')
     .order('firstName')
-    .returns<Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'teamId'>[]>()
+    .returns<PlayerQueryResult[]>()
 
   return (
     <div className="min-w-0 space-y-3 lg:space-y-6">
