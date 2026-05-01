@@ -27,9 +27,10 @@ export default async function TeamsPage() {
       .in('role', ['coach', 'volunteer', 'admin'])
       .order('name')
       .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>(),
-    (supabase
+    supabase
       .from('player_teams')
-      .select('teamId') as any).returns<{ teamId: string }[]>(),
+      .select('teamId')
+      .returns<{ teamId: string }[]>(),
   ])
 
   const coachMap = new Map(users?.map((u) => [u.id, u]) || [])

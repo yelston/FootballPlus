@@ -19,10 +19,11 @@ export default async function PlayersPage() {
 
   const supabase = createClient()
   const [{ data: players }, { data: teams }, { data: positions }] = await Promise.all([
-    (supabase
+    supabase
       .from('players')
       .select('*, player_teams(teamId, teams(id, name))')
-      .order('createdAt', { ascending: false }) as any).returns<PlayerWithTeams[]>(),
+      .order('createdAt', { ascending: false })
+      .returns<PlayerWithTeams[]>(),
     supabase
       .from('teams')
       .select('id, name')

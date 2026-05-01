@@ -21,7 +21,7 @@ type AttendanceRow = Database['public']['Tables']['attendance']['Row']
 type PlayerRow = Database['public']['Tables']['players']['Row']
 type TeamRow = Database['public']['Tables']['teams']['Row']
 type AnalyticsRecord = Pick<AttendanceRow, 'playerId' | 'points'> & {
-  players: Pick<PlayerRow, 'firstName' | 'lastName' | 'teamId'> | null
+  players: Pick<PlayerRow, 'firstName' | 'lastName'> | null
   teams: Pick<TeamRow, 'name'> | null
 }
 
@@ -67,7 +67,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
       .select(`
         playerId,
         points,
-        players(firstName, lastName, teamId),
+        players(firstName, lastName),
         teams(name)
       `)
 

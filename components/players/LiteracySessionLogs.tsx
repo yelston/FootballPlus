@@ -108,9 +108,10 @@ export function LiteracySessionLogs({ sessions, playerId, canEdit }: Props) {
       updatedAt: new Date().toISOString(),
     }
 
+    const table = (supabase as any).from('literacy_sessions')
     const { error: err } = editing
-      ? await supabase.from('literacy_sessions').update(payload).eq('id', editing.id)
-      : await supabase.from('literacy_sessions').insert(payload)
+      ? await table.update(payload).eq('id', editing.id)
+      : await table.insert(payload)
 
     setSaving(false)
     if (err) { setError(err.message); return }
