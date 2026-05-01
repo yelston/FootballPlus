@@ -13,6 +13,7 @@ type AttendanceRow = {
   points: number
 }
 type PlayerRow = Database['public']['Tables']['players']['Row']
+type LiteracySessionRow = Database['public']['Tables']['literacy_sessions']['Row']
 type PlayerTeamEntry = { teamId: string; teams: { id: string; name: string } | null }
 
 export default async function PlayerDetailPage({
@@ -71,7 +72,8 @@ export default async function PlayerDetailPage({
       .select('*')
       .eq('playerId', params.id)
       .order('date', { ascending: true })
-      .order('createdAt', { ascending: true }),
+      .order('createdAt', { ascending: true })
+      .returns<LiteracySessionRow[]>(),
   ])
 
   const player = playerData as (PlayerRow & { player_teams: PlayerTeamEntry[] }) | null
