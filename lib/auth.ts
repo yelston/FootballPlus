@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { Database } from '@/types/database'
 
-export type UserRole = 'admin' | 'coach' | 'volunteer'
+export type UserRole = 'admin' | 'board' | 'coach' | 'staff' | 'volunteer'
 
 export interface User {
   id: string

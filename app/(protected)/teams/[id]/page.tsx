@@ -63,11 +63,16 @@ export default async function TeamDetailPage({
     notFound()
   }
 
-  const { data: players } = await supabase
-    .from('players')
-    .select('id, firstName, lastName, positions')
-    .eq('teamId', params.id)
-    .order('firstName') as { data: Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'positions'>[] | null }
+  type PlayerTeamJoin = { players: Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'positions'> | null }
+  const { data: playerTeamRows } = await (supabase
+    .from('player_teams')
+    .select('players(id, firstName, lastName, positions)')
+    .eq('teamId', params.id) as any) as { data: PlayerTeamJoin[] | null }
+
+  const players = playerTeamRows
+    ?.map((row) => row.players)
+    .filter((p): p is Pick<PlayerRow, 'id' | 'firstName' | 'lastName' | 'positions'> => p !== null)
+    .sort((a, b) => a.firstName.localeCompare(b.firstName)) ?? []
 
   return (
     <div className="space-y-6">
@@ -140,11 +145,11 @@ export default async function TeamDetailPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Players ({players?.length || 0})</CardTitle>
+            <CardTitle>Players ({players.length})</CardTitle>
             <CardDescription>Players assigned to this team</CardDescription>
           </CardHeader>
           <CardContent>
-            {players && players.length > 0 ? (
+            {players.length > 0 ? (
               <>
                 <div className="space-y-3 md:hidden">
                   {players.map((player) => (

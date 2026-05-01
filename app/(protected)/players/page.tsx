@@ -7,7 +7,8 @@ import type { Database } from '@/types/database'
 type PlayerRow = Database['public']['Tables']['players']['Row']
 type TeamRow = Database['public']['Tables']['teams']['Row']
 type PositionRow = Database['public']['Tables']['positions']['Row']
-type PlayerWithTeam = PlayerRow & { teams: { name: string } | null }
+type PlayerTeamEntry = { teamId: string; teams: { id: string; name: string } | null }
+type PlayerWithTeams = PlayerRow & { player_teams: PlayerTeamEntry[] }
 
 export default async function PlayersPage() {
   const user = await getCurrentUser()
@@ -18,11 +19,10 @@ export default async function PlayersPage() {
 
   const supabase = createClient()
   const [{ data: players }, { data: teams }, { data: positions }] = await Promise.all([
-    supabase
+    (supabase
       .from('players')
-      .select('*, teams(name)')
-      .order('createdAt', { ascending: false })
-      .returns<PlayerWithTeam[]>(),
+      .select('*, player_teams(teamId, teams(id, name))')
+      .order('createdAt', { ascending: false }) as any).returns<PlayerWithTeams[]>(),
     supabase
       .from('teams')
       .select('id, name')
@@ -48,7 +48,7 @@ export default async function PlayersPage() {
         initialPlayers={players || []}
         teams={teams || []}
         positions={positions || []}
-        canEdit={user.role === 'admin' || user.role === 'coach'}
+        canEdit={user.role === 'admin' || user.role === 'coach' || user.role === 'staff'}
       />
     </div>
   )

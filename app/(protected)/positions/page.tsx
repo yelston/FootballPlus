@@ -31,7 +31,7 @@ export default async function PositionsPage() {
 
       <PositionsList
         initialPositions={positions || []}
-        canEdit={user.role === 'admin' || user.role === 'coach'}
+        canEdit={user.role === 'admin' || user.role === 'coach' || user.role === 'staff'}
       />
     </div>
   )

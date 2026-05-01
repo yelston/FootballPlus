@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { UsersList } from '@/components/users/UsersList'
+import { RolePermissionsButton } from '@/components/users/RolePermissionsModal'
 import type { Database } from '@/types/database'
 
 type UserRow = Database['public']['Tables']['users']['Row']
@@ -22,7 +23,10 @@ export default async function FPTeamPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-1 sm:gap-2">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">FP Team</h1>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">FP Team</h1>
+          <RolePermissionsButton />
+        </div>
         <p className="text-sm text-muted-foreground sm:text-base">
           Manage academy staff and volunteers
         </p>

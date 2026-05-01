@@ -6,7 +6,6 @@ import type { Database } from '@/types/database'
 
 type TeamRow = Database['public']['Tables']['teams']['Row']
 type UserRow = Database['public']['Tables']['users']['Row']
-type PlayerRow = Database['public']['Tables']['players']['Row']
 
 export default async function TeamsPage() {
   const user = await getCurrentUser()
@@ -28,19 +27,15 @@ export default async function TeamsPage() {
       .in('role', ['coach', 'volunteer', 'admin'])
       .order('name')
       .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>(),
-    supabase
-      .from('players')
-      .select('teamId')
-      .returns<Pick<PlayerRow, 'teamId'>[]>(),
+    (supabase
+      .from('player_teams')
+      .select('teamId') as any).returns<{ teamId: string }[]>(),
   ])
 
   const coachMap = new Map(users?.map((u) => [u.id, u]) || [])
   const playerCountMap = new Map<string, number>()
-  playerCounts?.forEach((player) => {
-    if (!player.teamId) {
-      return
-    }
-    playerCountMap.set(player.teamId, (playerCountMap.get(player.teamId) || 0) + 1)
+  playerCounts?.forEach((row: { teamId: string }) => {
+    playerCountMap.set(row.teamId, (playerCountMap.get(row.teamId) || 0) + 1)
   })
 
   const teamsWithData = teams?.map(team => ({
@@ -61,7 +56,7 @@ export default async function TeamsPage() {
       <TeamsList
         initialTeams={teamsWithData}
         users={users || []}
-        canEdit={user.role === 'admin' || user.role === 'coach'}
+        canEdit={user.role === 'admin' || user.role === 'coach' || user.role === 'staff'}
       />
     </div>
   )

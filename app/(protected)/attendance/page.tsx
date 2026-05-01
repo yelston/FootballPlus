@@ -39,7 +39,7 @@ export default async function AttendancePage() {
       <AttendanceView
         teams={teams || []}
         players={players || []}
-        canEdit={user.role === 'admin' || user.role === 'coach'}
+        canEdit={user.role === 'admin' || user.role === 'coach' || user.role === 'staff'}
       />
     </div>
   )

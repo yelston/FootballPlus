@@ -15,7 +15,7 @@ export interface Database {
           name: string
           email: string
           contactNumber: string | null
-          role: 'admin' | 'coach' | 'volunteer'
+          role: 'admin' | 'board' | 'coach' | 'staff' | 'volunteer'
           profileImageUrl: string | null
           createdAt: string
         }
@@ -24,7 +24,7 @@ export interface Database {
           name: string
           email: string
           contactNumber?: string | null
-          role: 'admin' | 'coach' | 'volunteer'
+          role: 'admin' | 'board' | 'coach' | 'staff' | 'volunteer'
           profileImageUrl?: string | null
           createdAt?: string
         }
@@ -33,7 +33,7 @@ export interface Database {
           name?: string
           email?: string
           contactNumber?: string | null
-          role?: 'admin' | 'coach' | 'volunteer'
+          role?: 'admin' | 'board' | 'coach' | 'staff' | 'volunteer'
           profileImageUrl?: string | null
           createdAt?: string
         }
@@ -45,7 +45,6 @@ export interface Database {
           lastName: string
           dob: string
           positions: string[]
-          teamId: string | null
           profileImageUrl: string | null
           preferredName: string | null
           jerseyNumber: number | null
@@ -71,6 +70,39 @@ export interface Database {
           registeredAt: string
           updatedAt: string
           createdAt: string
+          // Group 1: Basic Info
+          dateJoined: string | null
+          reviewDate: string | null
+          // Group 2: Technical (1–5)
+          technicalSprint: number | null
+          technicalDribbling: number | null
+          technicalPassing: number | null
+          technicalJuggling: number | null
+          technicalYoyo: number | null
+          avgTechnicalScore: number | null
+          // Group 3: Behaviour (1–5)
+          behaviourTeamwork: number | null
+          behaviourAttitude: number | null
+          behaviourCommunication: number | null
+          avgBehaviourScore: number | null
+          // Group 4: Progress
+          academicSchoolConcern: 'no' | 'monitor' | 'yes_discuss_school' | null
+          progressedToHigherLevel: boolean | null
+          nextStepGoal: string | null
+          completedFullSeason: boolean | null
+          joinedSchoolRegionalTeam: boolean | null
+          // Group 5: Academics (1–5)
+          academicBaseline: number | null
+          academicCurrent: number | null
+          academicImprovement: number | null
+          // Group 6: Notes
+          significantLifeChange: string | null
+          // Group 7: Literacy
+          literacyEnrolled: boolean | null
+          literacyReadingBaseline: number | null
+          literacyReadingCurrent: number | null
+          literacyReadingImprovement: number | null
+          literacySessionsAttended: number | null
         }
         Insert: {
           id?: string
@@ -78,7 +110,6 @@ export interface Database {
           lastName: string
           dob: string
           positions?: string[]
-          teamId?: string | null
           profileImageUrl?: string | null
           preferredName?: string | null
           jerseyNumber?: number | null
@@ -104,6 +135,28 @@ export interface Database {
           registeredAt?: string
           updatedAt?: string
           createdAt?: string
+          dateJoined?: string | null
+          reviewDate?: string | null
+          technicalSprint?: number | null
+          technicalDribbling?: number | null
+          technicalPassing?: number | null
+          technicalJuggling?: number | null
+          technicalYoyo?: number | null
+          behaviourTeamwork?: number | null
+          behaviourAttitude?: number | null
+          behaviourCommunication?: number | null
+          academicSchoolConcern?: 'no' | 'monitor' | 'yes_discuss_school' | null
+          progressedToHigherLevel?: boolean | null
+          nextStepGoal?: string | null
+          completedFullSeason?: boolean | null
+          joinedSchoolRegionalTeam?: boolean | null
+          academicBaseline?: number | null
+          academicCurrent?: number | null
+          significantLifeChange?: string | null
+          literacyEnrolled?: boolean | null
+          literacyReadingBaseline?: number | null
+          literacyReadingCurrent?: number | null
+          literacySessionsAttended?: number | null
         }
         Update: {
           id?: string
@@ -111,7 +164,6 @@ export interface Database {
           lastName?: string
           dob?: string
           positions?: string[]
-          teamId?: string | null
           profileImageUrl?: string | null
           preferredName?: string | null
           jerseyNumber?: number | null
@@ -137,6 +189,28 @@ export interface Database {
           registeredAt?: string
           updatedAt?: string
           createdAt?: string
+          dateJoined?: string | null
+          reviewDate?: string | null
+          technicalSprint?: number | null
+          technicalDribbling?: number | null
+          technicalPassing?: number | null
+          technicalJuggling?: number | null
+          technicalYoyo?: number | null
+          behaviourTeamwork?: number | null
+          behaviourAttitude?: number | null
+          behaviourCommunication?: number | null
+          academicSchoolConcern?: 'no' | 'monitor' | 'yes_discuss_school' | null
+          progressedToHigherLevel?: boolean | null
+          nextStepGoal?: string | null
+          completedFullSeason?: boolean | null
+          joinedSchoolRegionalTeam?: boolean | null
+          academicBaseline?: number | null
+          academicCurrent?: number | null
+          significantLifeChange?: string | null
+          literacyEnrolled?: boolean | null
+          literacyReadingBaseline?: number | null
+          literacyReadingCurrent?: number | null
+          literacySessionsAttended?: number | null
         }
       }
       teams: {
@@ -215,6 +289,61 @@ export interface Database {
           name?: string
           sortOrder?: number | null
           createdAt?: string
+        }
+      }
+      player_teams: {
+        Row: {
+          playerId: string
+          teamId: string
+          joinedAt: string
+        }
+        Insert: {
+          playerId: string
+          teamId: string
+          joinedAt?: string
+        }
+        Update: {
+          playerId?: string
+          teamId?: string
+          joinedAt?: string
+        }
+      }
+      literacy_sessions: {
+        Row: {
+          id: string
+          playerId: string
+          date: string
+          phonics: string | null
+          sightwords: string | null
+          readers: string | null
+          notes: string | null
+          loggedByUserId: string
+          createdAt: string
+          updatedAt: string
+        }
+        Insert: {
+          id?: string
+          playerId: string
+          date: string
+          phonics?: string | null
+          sightwords?: string | null
+          readers?: string | null
+          notes?: string | null
+          loggedByUserId: string
+          createdAt?: string
+          updatedAt?: string
+        }
+        Update: {
+          id?: string
+          playerId?: string
+          date?: string
+          phonics?: string | null
+          sightwords?: string | null
+          readers?: string | null
+          notes?: string | null
+          loggedByUserId?: string
+          createdAt?: string
+          updatedAt?: string
         }
       }
     }

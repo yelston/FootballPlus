@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { createClient } from '@/lib/supabase/client'
@@ -16,6 +16,8 @@ interface PlayerDetailActionsProps {
 
 export function PlayerDetailActions({ playerId, playerName, fallbackHref }: PlayerDetailActionsProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const currentTab = searchParams.get('tab') || 'profile'
   const toast = useToast()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -44,14 +46,15 @@ export function PlayerDetailActions({ playerId, playerName, fallbackHref }: Play
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         title="Delete player?"
-        description={`This will permanently delete ${playerName}.`}
+        description={`This will permanently delete ${playerName}. This action cannot be undone.`}
         confirmLabel="Delete"
         onConfirm={handleDelete}
         loading={loading}
+        requireTypedConfirmation="delete"
       />
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/players/${playerId}/edit`}>Edit</Link>
+          <Link href={`/players/${playerId}/edit?tab=${currentTab}`}>Edit</Link>
         </Button>
         <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)}>
           Delete

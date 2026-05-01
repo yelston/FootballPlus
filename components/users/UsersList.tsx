@@ -20,7 +20,7 @@ import { Select } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useToast } from '@/components/ui/toast'
 import { Plus, Search, Edit, Trash2 } from 'lucide-react'
-import type { User } from '@/lib/auth'
+import type { User, UserRole } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
 interface UsersListProps {
@@ -86,7 +86,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
     const email = emailFromForm || editingUser?.email || ''
     const contactNumberRaw = (formData.get('contactNumber') as string) || ''
     const contactNumber = normalizeContactNumber(contactNumberRaw)
-    const role = formData.get('role') as 'admin' | 'coach' | 'volunteer'
+    const role = formData.get('role') as UserRole
 
     const supabase = createClient()
 
@@ -296,7 +296,9 @@ export function UsersList({ initialUsers }: UsersListProps) {
                     disabled={loading}
                   >
                     <option value="admin">Admin</option>
+                    <option value="board">Board</option>
                     <option value="coach">Coach</option>
+                    <option value="staff">Staff</option>
                     <option value="volunteer">Volunteer</option>
                   </Select>
                 </div>

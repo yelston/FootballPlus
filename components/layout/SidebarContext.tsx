@@ -8,14 +8,18 @@ import { cn } from '@/lib/utils'
 interface SidebarContextValue {
   isOpen: boolean
   setIsOpen: (open: boolean) => void
+  isCollapsed: boolean
+  toggleCollapsed: () => void
 }
 
 const SidebarContext = createContext<SidebarContextValue | null>(null)
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const toggleCollapsed = () => setIsCollapsed((c) => !c)
   return (
-    <SidebarContext.Provider value={{ isOpen, setIsOpen }}>
+    <SidebarContext.Provider value={{ isOpen, setIsOpen, isCollapsed, toggleCollapsed }}>
       {children}
     </SidebarContext.Provider>
   )
@@ -39,5 +43,19 @@ export function SidebarTrigger({ className }: { className?: string }) {
     >
       {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
     </Button>
+  )
+}
+
+export function SidebarAwareMain({ children }: { children: React.ReactNode }) {
+  const { isCollapsed } = useSidebar()
+  return (
+    <main
+      className={cn(
+        'flex-1 min-w-0 overflow-x-clip transition-[margin] duration-300',
+        isCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+      )}
+    >
+      {children}
+    </main>
   )
 }

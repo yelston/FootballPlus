@@ -16,9 +16,8 @@ export function PlayerBackButton({ fallbackHref }: PlayerBackButtonProps) {
   }
 
   return (
-    <Button type="button" variant="outline" size="sm" onClick={handleBack}>
-      <ArrowLeft className="mr-2 h-4 w-4" />
-      Back to Players
+    <Button type="button" variant="outline" size="icon" onClick={handleBack} aria-label="Back to Players">
+      <ArrowLeft className="h-4 w-4" />
     </Button>
   )
 }

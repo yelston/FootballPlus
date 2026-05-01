@@ -1,5 +1,5 @@
 import { Sidebar } from '@/components/layout/Sidebar'
-import { SidebarProvider, SidebarTrigger } from '@/components/layout/SidebarContext'
+import { SidebarProvider, SidebarTrigger, SidebarAwareMain } from '@/components/layout/SidebarContext'
 import { ToastProvider } from '@/components/ui/toast'
 import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
@@ -23,14 +23,14 @@ export default async function ProtectedLayout({
       <SidebarProvider>
         <div className="flex min-h-screen">
           <Sidebar userRole={user.role} />
-          <main className="flex-1 min-w-0 lg:ml-64 overflow-x-hidden">
+          <SidebarAwareMain>
             <div className="p-4 pt-2 lg:p-8 lg:pt-8">
               <div className="lg:hidden flex items-center shrink-0 mb-2">
                 <SidebarTrigger />
               </div>
               {children}
             </div>
-          </main>
+          </SidebarAwareMain>
         </div>
       </SidebarProvider>
     </ToastProvider>

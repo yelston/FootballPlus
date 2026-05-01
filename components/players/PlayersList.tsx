@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -26,13 +25,12 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { useToast } from '@/components/ui/toast'
-import { Plus, Search, Eye, Trash2, Filter } from 'lucide-react'
+import { Plus, Search, Filter } from 'lucide-react'
 import { differenceInYears } from 'date-fns'
 import type { Database } from '@/types/database'
 
-type Player = Database['public']['Tables']['players']['Row'] & { teams?: { name: string } | null }
+type PlayerTeamEntry = { teamId: string; teams: { id: string; name: string } | null }
+type Player = Database['public']['Tables']['players']['Row'] & { player_teams?: PlayerTeamEntry[] }
 
 interface Team {
   id: string
@@ -55,20 +53,16 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const toast = useToast()
 
   const initialSearchQuery = searchParams.get('q') || ''
   const initialTeamFilter = searchParams.get('team')?.split(',').filter(Boolean) || []
   const initialPositionFilter = searchParams.get('position')?.split(',').filter(Boolean) || []
 
-  const [players, setPlayers] = useState<Player[]>(initialPlayers)
+  const [players] = useState<Player[]>(initialPlayers)
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery)
   const [teamFilter, setTeamFilter] = useState<string[]>(initialTeamFilter)
   const [positionFilter, setPositionFilter] = useState<string[]>(initialPositionFilter)
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<Player | null>(null)
-  const [loading, setLoading] = useState(false)
 
   const positionNames = useMemo(() => positions.map((p) => p.name), [positions])
 
@@ -111,10 +105,11 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
       searchQuery === '' ||
       `${player.firstName} ${player.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
 
+    const playerTeamIds = player.player_teams?.map((pt) => pt.teamId) ?? []
     const matchesTeam =
       teamFilter.length === 0 ||
-      (teamFilter.includes('none') && !player.teamId) ||
-      (player.teamId && teamFilter.includes(player.teamId))
+      (teamFilter.includes('none') && playerTeamIds.length === 0) ||
+      playerTeamIds.some((id) => teamFilter.includes(id))
 
     const matchesPosition =
       positionFilter.length === 0 ||
@@ -123,59 +118,12 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
     return matchesSearch && matchesTeam && matchesPosition
   })
 
-  const openDeleteDialog = (player: Player) => {
-    setDeleteTarget(player)
-    setIsDeleteDialogOpen(true)
-  }
-
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) {
-      return
-    }
-
-    setLoading(true)
-    const supabase = createClient()
-    const { error } = await supabase.from('players').delete().eq('id', deleteTarget.id)
-
-    if (error) {
-      toast.error(error.message)
-      setLoading(false)
-      return
-    }
-
-    setPlayers((prev) => prev.filter((p) => p.id !== deleteTarget.id))
-    setIsDeleteDialogOpen(false)
-    setDeleteTarget(null)
-    setLoading(false)
-    toast.success('Player deleted')
-    router.refresh()
-  }
-
   const detailHref = (playerId: string) => {
     return queryString ? `/players/${playerId}?${queryString}` : `/players/${playerId}`
   }
 
   return (
     <div className="space-y-4">
-      <ConfirmDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={(open) => {
-          setIsDeleteDialogOpen(open)
-          if (!open) {
-            setDeleteTarget(null)
-          }
-        }}
-        title="Delete player?"
-        description={
-          deleteTarget
-            ? `This will permanently delete ${deleteTarget.firstName} ${deleteTarget.lastName}.`
-            : 'This will permanently delete this player.'
-        }
-        confirmLabel="Delete"
-        onConfirm={handleConfirmDelete}
-        loading={loading}
-      />
-
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-sm flex items-center gap-2">
           <div className="relative flex-1">
@@ -314,33 +262,14 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
             {filteredPlayers.map((player) => {
               const age = differenceInYears(new Date(), new Date(player.dob))
               return (
-                <div key={player.id} className="rounded-md border p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <Link href={detailHref(player.id)} className="font-semibold hover:underline">
-                        {player.firstName} {player.lastName}
-                      </Link>
-                      <p className="text-sm text-muted-foreground">Age {age}</p>
-                    </div>
-                    {canEdit && (
-                      <div className="flex shrink-0 gap-2">
-                        <Button variant="ghost" size="icon" className="h-10 w-10" asChild>
-                          <Link href={detailHref(player.id)} aria-label="View player details">
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10"
-                          onClick={() => openDeleteDialog(player)}
-                          disabled={loading}
-                          aria-label="Delete player"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    )}
+                <div
+                  key={player.id}
+                  className="rounded-md border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => router.push(detailHref(player.id))}
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold">{player.firstName} {player.lastName}</p>
+                    <p className="text-sm text-muted-foreground">Age {age}</p>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1">
                     {player.positions && player.positions.length > 0 ? (
@@ -359,7 +288,9 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
                     )}
                   </div>
                   <div className="mt-2 text-sm text-muted-foreground truncate">
-                    {player.teams?.name || 'No team'}
+                    {player.player_teams && player.player_teams.length > 0
+                      ? player.player_teams.map((pt) => pt.teams?.name).filter(Boolean).join(', ')
+                      : 'No team'}
                   </div>
                 </div>
               )
@@ -373,19 +304,20 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
                   <TableHead>Name</TableHead>
                   <TableHead>Age</TableHead>
                   <TableHead>Positions</TableHead>
-                  <TableHead>Team</TableHead>
-                  {canEdit && <TableHead className="text-right">Actions</TableHead>}
+                  <TableHead>Teams</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPlayers.map((player) => {
                   const age = differenceInYears(new Date(), new Date(player.dob))
                   return (
-                    <TableRow key={player.id}>
+                    <TableRow
+                      key={player.id}
+                      className="cursor-pointer"
+                      onClick={() => router.push(detailHref(player.id))}
+                    >
                       <TableCell className="font-medium">
-                        <Link href={detailHref(player.id)} className="hover:underline">
-                          {player.firstName} {player.lastName}
-                        </Link>
+                        {player.firstName} {player.lastName}
                       </TableCell>
                       <TableCell>{age}</TableCell>
                       <TableCell>
@@ -407,27 +339,20 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
                         </div>
                       </TableCell>
                       <TableCell>
-                        {player.teams?.name || <span className="text-muted-foreground">No team</span>}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" asChild>
-                              <Link href={detailHref(player.id)} aria-label="View player details">
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openDeleteDialog(player)}
-                              disabled={loading}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                        {player.player_teams && player.player_teams.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {player.player_teams.map((pt) =>
+                              pt.teams ? (
+                                <Badge key={pt.teamId} variant="outline" className="text-xs">
+                                  {pt.teams.name}
+                                </Badge>
+                              ) : null
+                            )}
                           </div>
-                        </TableCell>
-                      )}
+                        ) : (
+                          <span className="text-muted-foreground">No team</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   )
                 })}

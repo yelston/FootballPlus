@@ -5,19 +5,22 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { 
-  LayoutDashboard, 
-  Users, 
-  UserCircle, 
-  UsersRound, 
+import {
+  LayoutDashboard,
+  Users,
+  UserCircle,
+  UsersRound,
   Calendar,
   LayoutList,
-  LogOut
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import type { UserRole } from '@/lib/auth'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -29,11 +32,11 @@ const navigation = [
 ]
 
 interface SidebarProps {
-  userRole: 'admin' | 'coach' | 'volunteer'
+  userRole: UserRole
 }
 
 export function Sidebar({ userRole }: SidebarProps) {
-  const { isOpen, setIsOpen } = useSidebar()
+  const { isOpen, setIsOpen, isCollapsed, toggleCollapsed } = useSidebar()
   const pathname = usePathname()
   const router = useRouter()
   const [prefetched] = useState(() => new Set<string>())
@@ -73,30 +76,47 @@ export function Sidebar({ userRole }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-40 h-screen w-64 bg-card border-r transition-transform lg:translate-x-0',
+          'fixed top-0 left-0 z-40 h-screen bg-card border-r transition-[transform,width] duration-300 lg:translate-x-0',
+          isCollapsed ? 'lg:w-16' : 'lg:w-64',
+          'w-64',
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center border-b px-6">
-            <Link href="/" className="flex items-center" onClick={() => setIsOpen(false)}>
-              <Image
-                src="/images/logo/FP Logo.png"
-                alt="Football Plus Logo"
-                width={120}
-                height={40}
-                className="h-8 w-auto object-contain"
-                priority
-              />
-            </Link>
+          {/* Header */}
+          <div className={cn('flex h-16 items-center border-b', isCollapsed ? 'justify-center px-2' : 'px-6')}>
+            {isCollapsed ? (
+              <Link href="/" onClick={() => setIsOpen(false)}>
+                <Image
+                  src="/images/logo/FP Logo.png"
+                  alt="Football Plus Logo"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                  priority
+                />
+              </Link>
+            ) : (
+              <Link href="/" className="flex items-center" onClick={() => setIsOpen(false)}>
+                <Image
+                  src="/images/logo/FP Logo.png"
+                  alt="Football Plus Logo"
+                  width={120}
+                  height={40}
+                  className="h-8 w-auto object-contain"
+                  priority
+                />
+              </Link>
+            )}
           </div>
 
-          <nav className="flex-1 space-y-1 px-3 py-4">
+          {/* Nav */}
+          <nav className={cn('flex-1 space-y-1 py-4', isCollapsed ? 'px-2' : 'px-3')}>
             {filteredNavigation.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href || 
+              const isActive = pathname === item.href ||
                 (item.href !== '/' && pathname?.startsWith(item.href))
-              
+
               return (
                 <Link
                   key={item.name}
@@ -104,42 +124,64 @@ export function Sidebar({ userRole }: SidebarProps) {
                   onClick={() => setIsOpen(false)}
                   onMouseEnter={() => handlePrefetch(item.href)}
                   onFocus={() => handlePrefetch(item.href)}
+                  title={isCollapsed ? item.name : undefined}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    'flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    isCollapsed ? 'justify-center gap-0' : 'gap-3',
                     isActive
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   )}
                 >
-                  <Icon className="h-5 w-5" />
-                  {item.name}
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!isCollapsed && item.name}
                 </Link>
               )
             })}
           </nav>
 
-          <div className="border-t p-4">
+          {/* Bottom section */}
+          <div className={cn('border-t p-4', isCollapsed && 'flex flex-col items-center px-2')}>
             <Link
               href="/profile"
+              title={isCollapsed ? 'My Profile' : undefined}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                isCollapsed ? 'justify-center gap-0 w-full' : 'gap-3',
                 pathname === '/profile'
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )}
             >
-              <UserCircle className="h-5 w-5" />
-              My Profile
+              <UserCircle className="h-5 w-5 shrink-0" />
+              {!isCollapsed && 'My Profile'}
             </Link>
             <Button
               variant="ghost"
-              className="mt-2 w-full justify-start gap-3"
+              title={isCollapsed ? 'Sign Out' : undefined}
+              className={cn(
+                'mt-2 w-full',
+                isCollapsed ? 'justify-center px-0' : 'justify-start gap-3'
+              )}
               onClick={handleLogout}
             >
-              <LogOut className="h-5 w-5" />
-              Sign Out
+              <LogOut className="h-5 w-5 shrink-0" />
+              {!isCollapsed && 'Sign Out'}
             </Button>
           </div>
+
+          {/* Desktop collapse toggle */}
+          <button
+            onClick={toggleCollapsed}
+            className="hidden lg:flex items-center justify-center h-8 w-8 rounded-full bg-background border shadow-sm absolute -right-4 top-1/2 -translate-y-1/2 hover:bg-accent transition-colors z-50"
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </button>
         </div>
       </aside>
     </>
