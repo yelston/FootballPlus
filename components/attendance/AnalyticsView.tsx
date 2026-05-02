@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,6 +16,11 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import type { Database } from '@/types/database'
+import {
+  DATE_RANGE_PRESET_OPTIONS,
+  DateRangePreset,
+  getDateRangeForPreset,
+} from './dateRangePresets'
 
 type AttendanceRow = Database['public']['Tables']['attendance']['Row']
 type PlayerRow = Database['public']['Tables']['players']['Row']
@@ -23,6 +28,11 @@ type TeamRow = Database['public']['Tables']['teams']['Row']
 type AnalyticsRecord = Pick<AttendanceRow, 'playerId' | 'points'> & {
   players: Pick<PlayerRow, 'firstName' | 'lastName'> | null
   teams: Pick<TeamRow, 'name'> | null
+}
+
+const isSitgTeam = (name: string | null | undefined) => {
+  const lower = name?.toLowerCase() ?? ''
+  return lower.includes('stay in the game') || lower.includes('champions')
 }
 
 interface Team {
@@ -37,6 +47,7 @@ interface PlayerStats {
   teamName: string | null
   totalPoints: number
   attendanceCount: number
+  isSitg: boolean
 }
 
 interface TeamStats {
@@ -44,6 +55,7 @@ interface TeamStats {
   teamName: string
   totalPoints: number
   playerCount: number
+  isSitg: boolean
 }
 
 interface AnalyticsViewProps {
@@ -54,9 +66,18 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([])
   const [teamStats, setTeamStats] = useState<TeamStats[]>([])
   const [loading, setLoading] = useState(true)
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('thisWeek')
+  const [customDateFrom, setCustomDateFrom] = useState('')
+  const [customDateTo, setCustomDateTo] = useState('')
   const [teamFilter, setTeamFilter] = useState<string>('all')
+
+  const activeDateRange = useMemo(() => {
+    if (datePreset === 'custom') {
+      return { from: customDateFrom, to: customDateTo }
+    }
+
+    return getDateRangeForPreset(datePreset)
+  }, [datePreset, customDateFrom, customDateTo])
 
   const loadAnalytics = useCallback(async () => {
     setLoading(true)
@@ -71,11 +92,11 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
         teams(name)
       `)
 
-    if (dateFrom) {
-      query = query.gte('date', dateFrom)
+    if (activeDateRange.from) {
+      query = query.gte('date', activeDateRange.from)
     }
-    if (dateTo) {
-      query = query.lte('date', dateTo)
+    if (activeDateRange.to) {
+      query = query.lte('date', activeDateRange.to)
     }
     if (teamFilter !== 'all') {
       query = query.eq('teamId', teamFilter)
@@ -97,6 +118,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
             teamName: record.teams?.name || null,
             totalPoints: 0,
             attendanceCount: 0,
+            isSitg: isSitgTeam(record.teams?.name),
           })
         }
         const stats = playerMap.get(playerId)!
@@ -119,6 +141,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
             teamName,
             totalPoints: 0,
             playerCount: 0,
+            isSitg: isSitgTeam(teamName),
           })
         }
         const stats = teamMap.get(teamId)!
@@ -146,7 +169,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
     }
 
     setLoading(false)
-  }, [dateFrom, dateTo, teamFilter])
+  }, [activeDateRange.from, activeDateRange.to, teamFilter])
 
   useEffect(() => {
     loadAnalytics()
@@ -162,22 +185,18 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div className="grid gap-2">
-              <Label htmlFor="dateFrom">From Date</Label>
-              <Input
-                id="dateFrom"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="dateTo">To Date</Label>
-              <Input
-                id="dateTo"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
+              <Label htmlFor="datePreset">Date Range</Label>
+              <Select
+                id="datePreset"
+                value={datePreset}
+                onChange={(e) => setDatePreset(e.target.value as DateRangePreset)}
+              >
+                {DATE_RANGE_PRESET_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="teamFilter">Team</Label>
@@ -194,6 +213,28 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
                 ))}
               </Select>
             </div>
+            {datePreset === 'custom' && (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="dateFrom">From Date</Label>
+                  <Input
+                    id="dateFrom"
+                    type="date"
+                    value={customDateFrom}
+                    onChange={(e) => setCustomDateFrom(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="dateTo">To Date</Label>
+                  <Input
+                    id="dateTo"
+                    type="date"
+                    value={customDateTo}
+                    onChange={(e) => setCustomDateTo(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -225,8 +266,14 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
                         {stat.teamName || 'No team'}
                       </p>
                       <div className="mt-1 flex items-center gap-4 text-sm">
-                        <span>Points: <span className="font-medium">{stat.totalPoints}</span></span>
-                        <span>Sessions: <span className="font-medium">{stat.attendanceCount}</span></span>
+                        {stat.isSitg ? (
+                          <span>Sessions attended: <span className="font-medium">{stat.attendanceCount}</span></span>
+                        ) : (
+                          <>
+                            <span>Points: <span className="font-medium">{stat.totalPoints}</span></span>
+                            <span>Sessions: <span className="font-medium">{stat.attendanceCount}</span></span>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -255,7 +302,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
                             )}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {stat.totalPoints}
+                            {stat.isSitg ? <span className="text-muted-foreground">—</span> : stat.totalPoints}
                           </TableCell>
                           <TableCell className="text-right">
                             {stat.attendanceCount}
@@ -292,7 +339,11 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
                       <p className="font-semibold">{stat.teamName}</p>
                       <div className="mt-1 flex items-center gap-4 text-sm">
                         <span>Players: <span className="font-medium">{stat.playerCount}</span></span>
-                        <span>Points: <span className="font-medium">{stat.totalPoints}</span></span>
+                        {stat.isSitg ? (
+                          <span>Sessions: <span className="font-medium">{stat.totalPoints}</span></span>
+                        ) : (
+                          <span>Points: <span className="font-medium">{stat.totalPoints}</span></span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -303,7 +354,7 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
                       <TableRow>
                         <TableHead>Team</TableHead>
                         <TableHead className="text-right">Players</TableHead>
-                        <TableHead className="text-right">Total Points</TableHead>
+                        <TableHead className="text-right">Total Points / Sessions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -316,7 +367,11 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
                             {stat.playerCount}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {stat.totalPoints}
+                            {stat.isSitg ? (
+                              <span className="text-muted-foreground">{stat.totalPoints} sessions</span>
+                            ) : (
+                              stat.totalPoints
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

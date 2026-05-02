@@ -199,6 +199,24 @@ export function OverviewTab({ timesheets, users }: OverviewTabProps) {
     [filtered, dateFrom, dateTo],
   )
 
+  const programBreakdown = useMemo(
+    () =>
+      PROGRAMS.map((program) => {
+        const rows = filtered.filter((r) => r.program === program)
+        return { program, hours: sumHours(rows), cost: sumCost(rows) }
+      }),
+    [filtered],
+  )
+
+  const activityBreakdown = useMemo(
+    () =>
+      ACTIVITY_TYPES.map((type) => {
+        const rows = filtered.filter((r) => r.activityType === type)
+        return { type, hours: sumHours(rows) }
+      }),
+    [filtered],
+  )
+
   return (
     <div className="space-y-6">
       {/* ── Filters accordion ── */}
@@ -390,6 +408,68 @@ export function OverviewTab({ timesheets, users }: OverviewTabProps) {
           </div>
         </>
       )}
+
+      {/* ── Cost breakdown tables ── */}
+      <div className="grid gap-6 sm:grid-cols-2">
+        {/* Programme Summary */}
+        <div className="overflow-hidden rounded-lg border">
+          <div className="bg-orange-500 px-4 py-2.5">
+            <span className="text-sm font-semibold text-white">Programme Summary (YTD)</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-blue-50 dark:bg-blue-950/30">
+                <th className="px-4 py-2 text-left font-medium text-foreground">Programme</th>
+                <th className="px-4 py-2 text-right font-medium text-foreground">Hours</th>
+                <th className="px-4 py-2 text-right font-medium text-foreground">Labour Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {programBreakdown.map(({ program, hours, cost }, i) => (
+                <tr
+                  key={program}
+                  className={i % 2 === 0 ? 'bg-white dark:bg-background' : 'bg-blue-50/60 dark:bg-blue-950/20'}
+                >
+                  <td className="px-4 py-2 text-foreground">{program}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-foreground">{hours.toFixed(2)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-foreground">{formatCurrency(cost)}</td>
+                </tr>
+              ))}
+              <tr className="border-t bg-blue-50 dark:bg-blue-950/30 font-medium">
+                <td className="px-4 py-2 text-foreground">Total</td>
+                <td className="px-4 py-2 text-right tabular-nums text-foreground">{totalHours.toFixed(2)}</td>
+                <td className="px-4 py-2 text-right tabular-nums text-foreground">{formatCurrency(totalCost)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Activity Mix */}
+        <div className="overflow-hidden rounded-lg border">
+          <div className="bg-indigo-700 px-4 py-2.5">
+            <span className="text-sm font-semibold text-white">Activity Mix (Hours)</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-blue-50 dark:bg-blue-950/30">
+                <th className="px-4 py-2 text-left font-medium text-foreground">Activity Type</th>
+                <th className="px-4 py-2 text-right font-medium text-foreground">Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activityBreakdown.map(({ type, hours }, i) => (
+                <tr
+                  key={type}
+                  className={i % 2 === 0 ? 'bg-white dark:bg-background' : 'bg-blue-50/60 dark:bg-blue-950/20'}
+                >
+                  <td className="px-4 py-2 text-foreground">{type}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-foreground">{hours.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

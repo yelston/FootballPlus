@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
 import { AttendanceDialog } from './AttendanceDialog'
@@ -37,6 +38,10 @@ function getTeamName(teamId: string | null, teams: Team[]): string {
 }
 
 export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
+  const [selectedTeam, setSelectedTeam] = useState<string>('all')
+  const filteredPlayers = selectedTeam === 'all'
+    ? players
+    : players.filter((p) => p.teamIds.includes(selectedTeam))
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -136,11 +141,23 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
               {format(currentDate, 'MMMM yyyy')}
             </CardTitle>
+            <Select
+              value={selectedTeam}
+              onChange={(e) => setSelectedTeam(e.target.value)}
+              className="w-[160px]"
+            >
+              <option value="all">All Teams</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </Select>
             <div className="flex gap-2">
               <Button variant="outline" size="icon" onClick={previousMonth}>
                 <ChevronLeft className="h-4 w-4" />
@@ -163,7 +180,8 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
               const isToday = isSameDay(day, new Date())
               const isPast = day < new Date() && !isToday
               const dateStr = format(day, 'yyyy-MM-dd')
-              const summary = submissionsByDate[dateStr] ?? []
+              const rawSummary = submissionsByDate[dateStr] ?? []
+              const summary = selectedTeam === 'all' ? rawSummary : rawSummary.filter(s => s.teamId === selectedTeam)
               const total = summary.reduce((sum, s) => sum + s.count, 0)
 
               return (
@@ -178,7 +196,7 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
                       {format(day, 'EEE, MMM d')}
                     </span>
                     <span className="text-sm text-muted-foreground">
-                      {total} {total === 1 ? 'entry' : 'entries'}
+                      {total} {total === 1 ? 'player' : 'players'}
                     </span>
                   </div>
                   {summary.length > 0 ? (
@@ -213,7 +231,8 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
               const isToday = isSameDay(day, new Date())
               const isPast = day < new Date() && !isToday
               const dateStr = format(day, 'yyyy-MM-dd')
-              const summary = submissionsByDate[dateStr] ?? []
+              const rawSummary = submissionsByDate[dateStr] ?? []
+              const summary = selectedTeam === 'all' ? rawSummary : rawSummary.filter(s => s.teamId === selectedTeam)
               const hasSubmission = summary.length > 0
               const tooltipText = hasSubmission
                 ? `${format(day, 'MMM d')}\n${formatSubmissionTooltip(summary)}`
@@ -243,7 +262,7 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
                       aria-label={formatSubmissionTooltip(summary)}
                     >
                       <div className="flex flex-col items-center gap-px text-[9px] leading-tight">
-                        {summary.map((s) => (
+                        {summary.slice(0, 3).map((s) => (
                           <span
                             key={s.teamId ?? 'none'}
                             className="truncate max-w-full text-center"
@@ -252,6 +271,11 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
                             {s.teamName}: {s.count}
                           </span>
                         ))}
+                        {summary.length > 3 && (
+                          <span className={`text-[9px] leading-tight ${isToday ? 'text-primary-foreground/70' : 'text-muted-foreground/70'}`}>
+                            +{summary.length - 3} more
+                          </span>
+                        )}
                       </div>
                     </div>
                   )}
@@ -268,8 +292,9 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
           onOpenChange={setIsDialogOpen}
           date={selectedDate}
           teams={teams}
-          players={players}
+          players={filteredPlayers}
           canEdit={canEdit}
+          selectedTeam={selectedTeam}
           onSuccess={handleDialogSuccess}
         />
       )}

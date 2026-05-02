@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Search, Calendar as CalendarIcon } from 'lucide-react'
 import { AttendanceDialog } from './AttendanceDialog'
 import type { Database } from '@/types/database'
+import {
+  DATE_RANGE_PRESET_OPTIONS,
+  DateRangePreset,
+  getDateRangeForPreset,
+} from './dateRangePresets'
 
 type AttendanceRow = Database['public']['Tables']['attendance']['Row']
 type PlayerRow = Database['public']['Tables']['players']['Row']
@@ -60,8 +65,10 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [teamFilter, setTeamFilter] = useState<string>('all')
-  const [dateFilter, setDateFilter] = useState<string>('')
+  const [selectedTeam, setSelectedTeam] = useState<string>('all')
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('thisWeek')
+  const [customDateFrom, setCustomDateFrom] = useState('')
+  const [customDateTo, setCustomDateTo] = useState('')
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
@@ -85,13 +92,17 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
 
     if (!error && data) {
       setAttendance(data)
-      // Default date filter to latest submission for faster initial view
-      if (data.length > 0) {
-        setDateFilter(data[0].date)
-      }
     }
     setLoading(false)
   }
+
+  const activeDateRange = useMemo(() => {
+    if (datePreset === 'custom') {
+      return { from: customDateFrom, to: customDateTo }
+    }
+
+    return getDateRangeForPreset(datePreset)
+  }, [datePreset, customDateFrom, customDateTo])
 
   const filteredAttendance = attendance.filter((record) => {
     const matchesSearch =
@@ -101,12 +112,14 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
         .includes(searchQuery.toLowerCase())
 
     const matchesTeam =
-      teamFilter === 'all' || record.teamId === teamFilter
+      selectedTeam === 'all' || record.teamId === selectedTeam
 
-    const matchesDate =
-      dateFilter === '' || record.date === dateFilter
+    const matchesDateFrom =
+      activeDateRange.from === '' || record.date >= activeDateRange.from
+    const matchesDateTo =
+      activeDateRange.to === '' || record.date <= activeDateRange.to
 
-    return matchesSearch && matchesTeam && matchesDate
+    return matchesSearch && matchesTeam && matchesDateFrom && matchesDateTo
   })
 
   const uniqueDates = Array.from(
@@ -132,8 +145,8 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
             />
           </div>
           <Select
-            value={teamFilter}
-            onChange={(e) => setTeamFilter(e.target.value)}
+            value={selectedTeam}
+            onChange={(e) => setSelectedTeam(e.target.value)}
             className="w-full shrink-0 sm:w-[140px]"
           >
             <option value="all">All Teams</option>
@@ -143,13 +156,36 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
               </option>
             ))}
           </Select>
-          <Input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="h-10 w-full shrink-0 sm:w-[150px]"
-            aria-label="Filter by date"
-          />
+          <Select
+            value={datePreset}
+            onChange={(e) => setDatePreset(e.target.value as DateRangePreset)}
+            className="w-full shrink-0 sm:w-[170px]"
+            aria-label="Filter by date range"
+          >
+            {DATE_RANGE_PRESET_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+          {datePreset === 'custom' && (
+            <>
+              <Input
+                type="date"
+                value={customDateFrom}
+                onChange={(e) => setCustomDateFrom(e.target.value)}
+                className="h-10 w-full shrink-0 sm:w-[150px]"
+                aria-label="Custom date from"
+              />
+              <Input
+                type="date"
+                value={customDateTo}
+                onChange={(e) => setCustomDateTo(e.target.value)}
+                className="h-10 w-full shrink-0 sm:w-[150px]"
+                aria-label="Custom date to"
+              />
+            </>
+          )}
         </div>
         {canEdit && (
           <Button onClick={handleCreateNew} className="shrink-0">
@@ -197,7 +233,10 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
                           {record.teams?.name || 'No team'}
                         </p>
                         <p className="text-sm">
-                          Points: <span className="font-medium">{record.points}</span>
+                          {record.teams?.name?.toLowerCase().includes('stay in the game') ||
+                           record.teams?.name?.toLowerCase().includes('champions')
+                            ? 'Attended'
+                            : <>Points: <span className="font-medium">{record.points}</span></>}
                         </p>
                       </div>
                     ))}
@@ -208,7 +247,7 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
                         <TableRow>
                           <TableHead>Player</TableHead>
                           <TableHead>Team</TableHead>
-                          <TableHead className="text-right">Points</TableHead>
+                          <TableHead className="text-right">Points/Attended</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -223,7 +262,10 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
                               )}
                             </TableCell>
                             <TableCell className="text-right font-medium">
-                              {record.points}
+                              {record.teams?.name?.toLowerCase().includes('stay in the game') ||
+                               record.teams?.name?.toLowerCase().includes('champions')
+                                ? 'Attended'
+                                : record.points}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -243,8 +285,9 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
           onOpenChange={setIsDialogOpen}
           date={selectedDate}
           teams={teams}
-          players={players}
+          players={selectedTeam === 'all' ? players : players.filter((p) => p.teamIds.includes(selectedTeam))}
           canEdit={canEdit}
+          selectedTeam={selectedTeam}
           onSuccess={loadAttendance}
         />
       )}

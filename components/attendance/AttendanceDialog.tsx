@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -21,8 +21,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Select } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -33,6 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useIsMobile } from '@/lib/hooks/use-media-query'
 import type { Database } from '@/types/database'
 
@@ -50,11 +50,7 @@ interface Player {
   teamIds: string[]
 }
 
-interface AttendanceRecord {
-  id: string
-  playerId: string
-  points: number
-}
+type AttendanceEntry = { points: number; attended: boolean; exists: boolean; id?: string }
 
 interface AttendanceDialogProps {
   open: boolean
@@ -63,6 +59,7 @@ interface AttendanceDialogProps {
   teams: Team[]
   players: Player[]
   canEdit: boolean
+  selectedTeam: string
   onSuccess?: () => void
 }
 
@@ -73,16 +70,34 @@ export function AttendanceDialog({
   teams,
   players,
   canEdit,
+  selectedTeam,
   onSuccess,
 }: AttendanceDialogProps) {
   const router = useRouter()
-  const [selectedTeam, setSelectedTeam] = useState<string>('all')
-  const [attendanceRecords, setAttendanceRecords] = useState<
-    Record<string, { points: number; exists: boolean; id?: string }>
-  >({})
+  const [attendanceRecords, setAttendanceRecords] = useState<Record<string, AttendanceEntry>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+  const initialRecordsRef = useRef<Record<string, AttendanceEntry>>({})
   const isMobile = useIsMobile()
+
+  const isDirty = useMemo(
+    () => JSON.stringify(attendanceRecords) !== JSON.stringify(initialRecordsRef.current),
+    [attendanceRecords]
+  )
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && isDirty && canEdit) {
+      setShowDiscardConfirm(true)
+      return
+    }
+    onOpenChange(newOpen)
+  }
+
+  const playerIsCheckboxOnly = (player: Player) =>
+    player.teamIds.some((id) =>
+      (teams.find((t) => t.id === id)?.name?.toLowerCase() ?? '').includes('stay in the game')
+    )
 
   const HeaderComponent = isMobile ? SheetHeader : DialogHeader
   const TitleComponent = isMobile ? SheetTitle : DialogTitle
@@ -90,13 +105,6 @@ export function AttendanceDialog({
   const FooterComponent = isMobile ? SheetFooter : DialogFooter
 
   const dateString = format(date, 'yyyy-MM-dd')
-
-  const getFilteredPlayers = useCallback(() => {
-    if (selectedTeam === 'all') {
-      return players
-    }
-    return players.filter((p) => p.teamIds.includes(selectedTeam))
-  }, [players, selectedTeam])
 
   const loadExistingAttendance = useCallback(async () => {
     const supabase = createClient()
@@ -106,45 +114,44 @@ export function AttendanceDialog({
       .eq('date', dateString)
       .returns<Pick<AttendanceRow, 'id' | 'playerId' | 'points'>[]>()
 
-    const records: Record<string, { points: number; exists: boolean; id?: string }> = {}
-
-    if (data) {
-      data.forEach((record) => {
-        records[record.playerId] = {
-          points: record.points,
-          exists: true,
-          id: record.id,
-        }
-      })
-    }
-
-    // Initialize all players with default points
-    const filteredPlayers = getFilteredPlayers()
-    filteredPlayers.forEach((player) => {
-      if (!records[player.id]) {
-        records[player.id] = {
-          points: 1,
-          exists: false,
-        }
-      }
+    const existing: Record<string, { points: number; id: string }> = {}
+    data?.forEach((r) => {
+      existing[r.playerId] = { points: r.points, id: r.id }
     })
 
+    const records: Record<string, AttendanceEntry> = {}
+    players.forEach((player) => {
+      const found = existing[player.id]
+      records[player.id] = {
+        points: found?.points ?? 1,
+        attended: !!found,
+        exists: !!found,
+        id: found?.id,
+      }
+    })
     setAttendanceRecords(records)
-  }, [dateString, getFilteredPlayers])
+    initialRecordsRef.current = { ...records }
+  }, [dateString, players])
 
   useEffect(() => {
-    if (open) {
-      loadExistingAttendance()
+    if (!open) {
+      initialRecordsRef.current = {}
+      return
     }
+    loadExistingAttendance()
   }, [open, loadExistingAttendance])
 
   const handlePointsChange = (playerId: string, points: number) => {
     setAttendanceRecords((prev) => ({
       ...prev,
-      [playerId]: {
-        ...prev[playerId],
-        points: Math.max(0, points),
-      },
+      [playerId]: { ...prev[playerId], points: Math.max(0, points) },
+    }))
+  }
+
+  const handleToggle = (playerId: string) => {
+    setAttendanceRecords((prev) => ({
+      ...prev,
+      [playerId]: { ...prev[playerId], attended: !prev[playerId].attended },
     }))
   }
 
@@ -166,33 +173,38 @@ export function AttendanceDialog({
     }
 
     try {
-      const updates = Object.entries(attendanceRecords).map(
-        ([playerId, record]) => ({
+      const entries = Object.entries(attendanceRecords)
+      const toSave = entries.filter(([playerId, r]) => {
+        const player = players.find((p) => p.id === playerId)
+        return player && playerIsCheckboxOnly(player) ? r.attended : true
+      })
+
+      const updates = toSave.map(([playerId, record]) => {
+        const player = players.find((p) => p.id === playerId)
+        const checkboxOnly = player ? playerIsCheckboxOnly(player) : false
+        return {
           date: dateString,
           playerId,
-          teamId: selectedTeam !== 'all'
-            ? selectedTeam
-            : (players.find((p) => p.id === playerId)?.teamIds[0] || null),
-          points: record.points,
+          teamId:
+            selectedTeam !== 'all'
+              ? selectedTeam
+              : (player?.teamIds[0] || null),
+          points: checkboxOnly ? 1 : record.points,
           updatedByUserId: user.id,
-        })
-      )
+        }
+      })
 
-      // Delete existing records for this date
       await supabase.from('attendance').delete().eq('date', dateString)
 
-      // Insert new/updated records
-      // @ts-ignore - Supabase type inference issue with insert
-      const { error } = await supabase.from('attendance').insert(updates)
-
-      if (error) {
-        throw error
+      if (updates.length > 0) {
+        // @ts-ignore - Supabase type inference issue with insert
+        const { error } = await supabase.from('attendance').insert(updates)
+        if (error) throw error
       }
 
+      initialRecordsRef.current = { ...attendanceRecords }
       onOpenChange(false)
-      if (onSuccess) {
-        onSuccess()
-      }
+      if (onSuccess) onSuccess()
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'Failed to save attendance')
@@ -200,8 +212,6 @@ export function AttendanceDialog({
       setLoading(false)
     }
   }
-
-  const filteredPlayers = getFilteredPlayers()
 
   const dialogBody = (
     <>
@@ -221,85 +231,82 @@ export function AttendanceDialog({
           </div>
         )}
 
-        <div className="grid gap-2">
-          <Label htmlFor="team">Filter by Team</Label>
-          <Select
-            id="team"
-            value={selectedTeam}
-            onChange={(e) => setSelectedTeam(e.target.value)}
-            disabled={loading || !canEdit}
-          >
-            <option value="all">All Teams</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        {filteredPlayers.length === 0 ? (
+        {players.length === 0 ? (
           <div className="rounded-lg border p-4 text-center text-muted-foreground">
             No players found for selected team.
           </div>
         ) : (
           <>
+            {/* Mobile layout */}
             <div className="space-y-2 md:hidden">
-              {filteredPlayers.map((player) => {
-                const record = attendanceRecords[player.id] || {
-                  points: 1,
-                  exists: false,
-                }
+              {players.map((player) => {
+                const record = attendanceRecords[player.id] ?? { points: 1, attended: false, exists: false }
+                const checkboxOnly = playerIsCheckboxOnly(player)
+                const teamNames = player.teamIds
+                  .map((id) => teams.find((t) => t.id === id)?.name)
+                  .filter(Boolean)
+                  .join(', ')
 
                 return (
                   <div key={player.id} className="rounded-md border p-3">
-                    <p className="font-semibold">
-                      {player.firstName} {player.lastName}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {player.teamIds.length > 0
-                        ? player.teamIds.map((id) => teams.find((t) => t.id === id)?.name).filter(Boolean).join(', ')
-                        : 'No team'}
-                    </p>
-                    <div className="mt-2 flex items-center justify-between gap-3">
-                      <span className="text-sm text-muted-foreground">Points</span>
-                      {canEdit ? (
-                        <Input
-                          type="number"
-                          min="0"
-                          value={record.points}
-                          onChange={(e) =>
-                            handlePointsChange(
-                              player.id,
-                              parseInt(e.target.value) || 0
-                            )
-                          }
-                          disabled={loading}
-                          className="w-20"
-                        />
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">
+                          {player.firstName} {player.lastName}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {teamNames || 'No team'}
+                        </p>
+                      </div>
+                      {checkboxOnly ? (
+                        canEdit ? (
+                          <input
+                            type="checkbox"
+                            checked={record.attended}
+                            onChange={() => handleToggle(player.id)}
+                            disabled={loading}
+                            className="h-4 w-4 cursor-pointer accent-primary"
+                          />
+                        ) : (
+                          <span className="text-sm font-medium">{record.attended ? 'Yes' : 'No'}</span>
+                        )
                       ) : (
-                        <span className="font-medium">{record.points}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">Points</span>
+                          {canEdit ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              value={record.points}
+                              onChange={(e) => handlePointsChange(player.id, parseInt(e.target.value) || 0)}
+                              disabled={loading}
+                              className="w-20"
+                            />
+                          ) : (
+                            <span className="font-medium">{record.points}</span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
                 )
               })}
             </div>
+
+            {/* Desktop layout */}
             <div className="hidden md:block rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Player</TableHead>
                     <TableHead>Team</TableHead>
-                    <TableHead className="text-right">Points</TableHead>
+                    <TableHead className="text-center">Points/Attended</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPlayers.map((player) => {
-                    const record = attendanceRecords[player.id] || {
-                      points: 1,
-                      exists: false,
-                    }
+                  {players.map((player) => {
+                    const record = attendanceRecords[player.id] ?? { points: 1, attended: false, exists: false }
+                    const checkboxOnly = playerIsCheckboxOnly(player)
                     const playerTeams = player.teamIds
                       .map((id) => teams.find((t) => t.id === id))
                       .filter(Boolean) as Team[]
@@ -320,25 +327,40 @@ export function AttendanceDialog({
                             <span className="text-muted-foreground">No team</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
-                          {canEdit ? (
-                            <Input
-                              type="number"
-                              min="0"
-                              value={record.points}
-                              onChange={(e) =>
-                                handlePointsChange(
-                                  player.id,
-                                  parseInt(e.target.value) || 0
-                                )
-                              }
-                              disabled={loading}
-                              className="w-20 ml-auto"
-                            />
-                          ) : (
-                            <span className="font-medium">{record.points}</span>
-                          )}
-                        </TableCell>
+                        {checkboxOnly ? (
+                          <TableCell>
+                            <div className="flex justify-center">
+                            {canEdit ? (
+                              <input
+                                type="checkbox"
+                                checked={record.attended}
+                                onChange={() => handleToggle(player.id)}
+                                disabled={loading}
+                                className="h-4 w-4 cursor-pointer accent-primary"
+                              />
+                            ) : (
+                              <span className="font-medium">{record.attended ? 'Yes' : 'No'}</span>
+                            )}
+                            </div>
+                          </TableCell>
+                        ) : (
+                          <TableCell className="text-center">
+                            {canEdit ? (
+                              <div className="flex justify-center">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={record.points}
+                                  onChange={(e) => handlePointsChange(player.id, parseInt(e.target.value) || 0)}
+                                  disabled={loading}
+                                  className="w-20"
+                                />
+                              </div>
+                            ) : (
+                              <span className="font-medium">{record.points}</span>
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     )
                   })}
@@ -350,7 +372,10 @@ export function AttendanceDialog({
       </div>
 
       <FooterComponent>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+        {isDirty && canEdit && (
+          <span className="mr-auto text-sm text-amber-500">Unsaved changes</span>
+        )}
+        <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
           {canEdit ? 'Cancel' : 'Close'}
         </Button>
         {canEdit && (
@@ -363,18 +388,32 @@ export function AttendanceDialog({
   )
 
   return (
-    isMobile ? (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-[100svh] w-screen overflow-y-auto">
-          {dialogBody}
-        </SheetContent>
-      </Sheet>
-    ) : (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-          {dialogBody}
-        </DialogContent>
-      </Dialog>
-    )
+    <>
+      {isMobile ? (
+        <Sheet open={open} onOpenChange={handleOpenChange}>
+          <SheetContent side="bottom" className="h-[100svh] w-screen overflow-y-auto">
+            {dialogBody}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+            {dialogBody}
+          </DialogContent>
+        </Dialog>
+      )}
+      <ConfirmDialog
+        open={showDiscardConfirm}
+        title="Discard Changes?"
+        description="You have unsaved attendance changes. They will be lost if you close without saving."
+        confirmLabel="Discard Changes"
+        cancelLabel="Keep Editing"
+        onConfirm={() => {
+          setShowDiscardConfirm(false)
+          onOpenChange(false)
+        }}
+        onOpenChange={setShowDiscardConfirm}
+      />
+    </>
   )
 }
