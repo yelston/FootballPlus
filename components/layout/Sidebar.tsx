@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
-  Users,
+  ShieldCheck,
   UserCircle,
   UsersRound,
   Calendar,
@@ -25,11 +25,11 @@ import type { UserRole } from '@/lib/auth'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'FP Team', href: '/fp-team', icon: Users, roles: ['admin'] },
   { name: 'Players', href: '/players', icon: UserCircle },
-  { name: 'Teams', href: '/teams', icon: UsersRound },
   { name: 'Attendance', href: '/attendance', icon: Calendar },
   { name: 'Staff', href: '/staff', icon: Briefcase, roles: ['admin', 'board'] },
+  { name: 'FP Team', href: '/fp-team', icon: ShieldCheck, roles: ['admin'] },
+  { name: 'Teams', href: '/teams', icon: UsersRound },
   { name: 'Positions', href: '/positions', icon: LayoutList },
 ]
 

@@ -1,13 +1,23 @@
 'use client'
 
+import { useMemo, useState, useCallback } from 'react'
+import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
 import type { Database } from '@/types/database'
 
 type UserRow = Database['public']['Tables']['users']['Row']
@@ -18,11 +28,26 @@ interface OverviewTabProps {
   users: Pick<UserRow, 'id' | 'name'>[]
 }
 
+const PROGRAMS = ['Champions', 'STAY in the Game', 'Schools', 'Shared/Core']
+const ACTIVITY_TYPES = [
+  'Direct delivery',
+  'Preparation',
+  'Travel',
+  'Admin',
+  'Monitoring & Evaluation',
+  'Partner engagement',
+  'Safeguarding',
+  'Training',
+]
+
+type QuickFilter = 'this-month' | 'last-month' | 'this-year' | null
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-AU', {
     style: 'currency',
     currency: 'AUD',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(value)
 }
 
@@ -34,39 +59,246 @@ function sumCost(rows: StaffTimesheetRow[]) {
   return rows.reduce((acc, r) => acc + Number(r.allocatedLabourCost ?? 0), 0)
 }
 
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1)
+}
+
+function endOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0)
+}
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function formatDayLabel(d: Date) {
+  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`
+}
+
+function formatMonthLabel(d: Date) {
+  return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
+}
+
+function groupByTime(
+  rows: StaffTimesheetRow[],
+  dateFrom: Date | undefined,
+  dateTo: Date | undefined,
+): { label: string; sortKey: string; hours: number; cost: number }[] {
+  if (rows.length === 0) return []
+
+  const dates = rows.map((r) => new Date(r.date))
+  const minDate = dateFrom ?? new Date(Math.min(...dates.map((d) => d.getTime())))
+  const maxDate = dateTo ?? new Date(Math.max(...dates.map((d) => d.getTime())))
+  const spanDays = (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)
+  const useDay = spanDays <= 62
+
+  const map: Record<string, { label: string; sortKey: string; hours: number; cost: number }> = {}
+
+  for (const row of rows) {
+    const d = new Date(row.date)
+    let key: string
+    let label: string
+    if (useDay) {
+      key = d.toISOString().slice(0, 10)
+      label = formatDayLabel(d)
+    } else {
+      key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      label = formatMonthLabel(d)
+    }
+    if (!map[key]) map[key] = { label, sortKey: key, hours: 0, cost: 0 }
+    map[key].hours += Number(row.hours)
+    map[key].cost += Number(row.allocatedLabourCost ?? 0)
+  }
+
+  return Object.values(map).sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+}
+
 export function OverviewTab({ timesheets, users }: OverviewTabProps) {
-  const totalHours = sumHours(timesheets)
-  const totalCost = sumCost(timesheets)
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(null)
+  const [showCustomRange, setShowCustomRange] = useState(false)
+  const [customFrom, setCustomFrom] = useState<Date | undefined>()
+  const [customTo, setCustomTo] = useState<Date | undefined>()
+  const [roleFilter, setRoleFilter] = useState('')
+  const [programFilter, setProgramFilter] = useState('')
+  const [fundingFilter, setFundingFilter] = useState('')
+  const [activityFilter, setActivityFilter] = useState('')
+  const [chartMode, setChartMode] = useState<'hours' | 'cost'>('hours')
 
-  const userMap = Object.fromEntries(users.map((u) => [u.id, u.name]))
+  const uniqueRoles = useMemo(
+    () => [...new Set(timesheets.map((r) => r.role).filter(Boolean) as string[])].sort(),
+    [timesheets],
+  )
+  const uniqueFunding = useMemo(
+    () => [...new Set(timesheets.map((r) => r.fundingSource).filter(Boolean) as string[])].sort(),
+    [timesheets],
+  )
 
-  // Group by user
-  const byUser = timesheets.reduce<Record<string, StaffTimesheetRow[]>>((acc, row) => {
-    const key = row.userId ?? 'unknown'
-    if (!acc[key]) acc[key] = []
-    acc[key].push(row)
-    return acc
-  }, {})
+  const { dateFrom, dateTo } = useMemo(() => {
+    if (showCustomRange) return { dateFrom: customFrom, dateTo: customTo }
+    const now = new Date()
+    if (quickFilter === 'this-month') return { dateFrom: startOfMonth(now), dateTo: now }
+    if (quickFilter === 'last-month') {
+      const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      return { dateFrom: startOfMonth(lm), dateTo: endOfMonth(lm) }
+    }
+    if (quickFilter === 'this-year') return { dateFrom: new Date(now.getFullYear(), 0, 1), dateTo: now }
+    return { dateFrom: undefined, dateTo: undefined }
+  }, [quickFilter, showCustomRange, customFrom, customTo])
 
-  // Group by program
-  const byProgram = timesheets.reduce<Record<string, StaffTimesheetRow[]>>((acc, row) => {
-    const key = row.program ?? 'Unspecified'
-    if (!acc[key]) acc[key] = []
-    acc[key].push(row)
-    return acc
-  }, {})
+  const filtered = useMemo(() => {
+    return timesheets.filter((row) => {
+      if (dateFrom || dateTo) {
+        const rowDate = new Date(row.date)
+        if (dateFrom && rowDate < dateFrom) return false
+        if (dateTo && rowDate > dateTo) return false
+      }
+      if (roleFilter && row.role !== roleFilter) return false
+      if (programFilter && row.program !== programFilter) return false
+      if (fundingFilter && row.fundingSource !== fundingFilter) return false
+      if (activityFilter && row.activityType !== activityFilter) return false
+      return true
+    })
+  }, [timesheets, dateFrom, dateTo, roleFilter, programFilter, fundingFilter, activityFilter])
 
-  // Group by activity type
-  const byActivity = timesheets.reduce<Record<string, StaffTimesheetRow[]>>((acc, row) => {
-    const key = row.activityType ?? 'Unspecified'
-    if (!acc[key]) acc[key] = []
-    acc[key].push(row)
-    return acc
-  }, {})
+  const activeFilterCount = [
+    quickFilter !== null || showCustomRange,
+    !!roleFilter,
+    !!programFilter,
+    !!fundingFilter,
+    !!activityFilter,
+  ].filter(Boolean).length
+
+  const clearAll = useCallback(() => {
+    setQuickFilter(null)
+    setShowCustomRange(false)
+    setCustomFrom(undefined)
+    setCustomTo(undefined)
+    setRoleFilter('')
+    setProgramFilter('')
+    setFundingFilter('')
+    setActivityFilter('')
+  }, [])
+
+  const handleQuickFilter = (preset: QuickFilter) => {
+    if (quickFilter === preset) {
+      setQuickFilter(null)
+    } else {
+      setQuickFilter(preset)
+      setShowCustomRange(false)
+    }
+  }
+
+  const handleCustomRange = () => {
+    setShowCustomRange((prev) => !prev)
+    if (!showCustomRange) setQuickFilter(null)
+  }
+
+  const totalHours = sumHours(filtered)
+  const totalCost = sumCost(filtered)
+
+  const chartData = useMemo(
+    () => groupByTime(filtered, dateFrom, dateTo),
+    [filtered, dateFrom, dateTo],
+  )
 
   return (
     <div className="space-y-6">
-      {/* Summary cards */}
+      {/* ── Filters accordion ── */}
+      <div className="rounded-lg border bg-card px-4">
+        <Accordion type="single" collapsible>
+          <AccordionItem value="filters" className="border-b-0">
+            <AccordionTrigger className="hover:no-underline">
+              <div className="flex items-center gap-2">
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+                    {activeFilterCount} active
+                  </span>
+                )}
+              </div>
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    clearAll()
+                  }}
+                  className="ml-auto mr-2 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  Clear all
+                </button>
+              )}
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-4 pt-1">
+                {/* Date presets */}
+                <div className="flex flex-wrap gap-1.5">
+                  {(
+                    [
+                      ['this-month', 'This Month'],
+                      ['last-month', 'Last Month'],
+                      ['this-year', 'This Year'],
+                    ] as [QuickFilter, string][]
+                  ).map(([preset, label]) => (
+                    <Button
+                      key={preset}
+                      size="sm"
+                      variant={quickFilter === preset ? 'default' : 'outline'}
+                      onClick={() => handleQuickFilter(preset)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                  <Button
+                    size="sm"
+                    variant={showCustomRange ? 'default' : 'outline'}
+                    onClick={handleCustomRange}
+                  >
+                    Custom
+                  </Button>
+                </div>
+
+                {/* Custom date range */}
+                {showCustomRange && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">From</p>
+                      <DatePicker date={customFrom} onSelect={setCustomFrom} toYear={new Date().getFullYear()} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">To</p>
+                      <DatePicker date={customTo} onSelect={setCustomTo} toYear={new Date().getFullYear()} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Attribute filters */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    { label: 'Role', value: roleFilter, onChange: setRoleFilter, options: uniqueRoles, placeholder: 'All Roles' },
+                    { label: 'Program', value: programFilter, onChange: setProgramFilter, options: PROGRAMS, placeholder: 'All Programs' },
+                    { label: 'Funding', value: fundingFilter, onChange: setFundingFilter, options: uniqueFunding, placeholder: 'All Funding' },
+                    { label: 'Activity', value: activityFilter, onChange: setActivityFilter, options: ACTIVITY_TYPES, placeholder: 'All Activities' },
+                  ].map(({ label, value, onChange, options, placeholder }) => (
+                    <div key={label} className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+                      <select
+                        value={value}
+                        onChange={(e) => onChange(e.target.value)}
+                        className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                      >
+                        <option value="">{placeholder}</option>
+                        {options.map((o) => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
+
+      {/* ── Summary cards ── */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border bg-card p-5">
           <p className="text-sm text-muted-foreground">Total Hours</p>
@@ -78,93 +310,83 @@ export function OverviewTab({ timesheets, users }: OverviewTabProps) {
         </div>
       </div>
 
-      {timesheets.length === 0 && (
+      {filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-          No timesheet entries yet. Add entries in the Timesheet tab.
+          {timesheets.length === 0
+            ? 'No timesheet entries yet. Add entries in the Timesheet tab.'
+            : 'No entries match the current filters.'}
         </div>
-      )}
-
-      {timesheets.length > 0 && (
+      ) : (
         <>
-          {/* By staff member */}
-          <div>
-            <h2 className="mb-3 text-base font-semibold">By Staff Member</h2>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Staff Member</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                    <TableHead className="text-right">Labour Cost</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(byUser)
-                    .sort((a, b) => sumHours(b[1]) - sumHours(a[1]))
-                    .map(([userId, rows]) => (
-                      <TableRow key={userId}>
-                        <TableCell>{userMap[userId] ?? 'Unknown'}</TableCell>
-                        <TableCell className="text-right">{sumHours(rows).toFixed(1)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(sumCost(rows))}</TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
+          {/* ── Chart mode toggle ── */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">View by:</span>
+            <div className="flex rounded-md border">
+              <button
+                onClick={() => setChartMode('hours')}
+                className={`px-3 py-1.5 text-sm rounded-l-md transition-colors ${
+                  chartMode === 'hours'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-muted'
+                }`}
+              >
+                Hours
+              </button>
+              <button
+                onClick={() => setChartMode('cost')}
+                className={`px-3 py-1.5 text-sm rounded-r-md border-l transition-colors ${
+                  chartMode === 'cost'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-muted'
+                }`}
+              >
+                Cost
+              </button>
             </div>
           </div>
 
-          {/* By program */}
-          <div>
-            <h2 className="mb-3 text-base font-semibold">By Program</h2>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Program</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                    <TableHead className="text-right">Labour Cost</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(byProgram)
-                    .sort((a, b) => sumHours(b[1]) - sumHours(a[1]))
-                    .map(([program, rows]) => (
-                      <TableRow key={program}>
-                        <TableCell>{program}</TableCell>
-                        <TableCell className="text-right">{sumHours(rows).toFixed(1)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(sumCost(rows))}</TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-
-          {/* By activity type */}
-          <div>
-            <h2 className="mb-3 text-base font-semibold">By Activity Type</h2>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Activity Type</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                    <TableHead className="text-right">Labour Cost</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(byActivity)
-                    .sort((a, b) => sumHours(b[1]) - sumHours(a[1]))
-                    .map(([activity, rows]) => (
-                      <TableRow key={activity}>
-                        <TableCell>{activity}</TableCell>
-                        <TableCell className="text-right">{sumHours(rows).toFixed(1)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(sumCost(rows))}</TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </div>
+          {/* ── Time-series bar chart ── */}
+          <div className="rounded-lg border bg-card p-4">
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) =>
+                    chartMode === 'hours' ? `${v}h` : formatCurrency(v)
+                  }
+                  width={chartMode === 'cost' ? 80 : 48}
+                />
+                <Tooltip
+                  cursor={{ fill: 'hsl(var(--muted))' }}
+                  contentStyle={{
+                    background: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 8,
+                    fontSize: 13,
+                  }}
+                  formatter={(value) => {
+                    const n = typeof value === 'number' ? value : Number(value ?? 0)
+                    return chartMode === 'hours'
+                      ? [`${n.toFixed(1)}h`, 'Hours']
+                      : [formatCurrency(n), 'Cost']
+                  }}
+                />
+                <Bar
+                  dataKey={chartMode}
+                  fill="hsl(var(--primary))"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </>
       )}
