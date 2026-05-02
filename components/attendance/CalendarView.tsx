@@ -20,7 +20,7 @@ interface Player {
   id: string
   firstName: string
   lastName: string
-  teamId: string | null
+  teamIds: string[]
 }
 
 export type DateSubmissionSummary = { teamId: string | null; teamName: string; count: number }[]

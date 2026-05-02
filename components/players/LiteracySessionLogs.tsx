@@ -204,7 +204,6 @@ export function LiteracySessionLogs({ sessions, playerId, canEdit }: Props) {
               <Label>Phonics</Label>
               <Textarea
                 rows={2}
-                placeholder="e.g. Phase 3 – digraphs sh, ch, th..."
                 value={form.phonics}
                 onChange={(e) => setForm((f) => ({ ...f, phonics: e.target.value }))}
               />
@@ -214,7 +213,6 @@ export function LiteracySessionLogs({ sessions, playerId, canEdit }: Props) {
               <Label>Sight Words</Label>
               <Textarea
                 rows={2}
-                placeholder="e.g. Red words list 1–10, focusing on 'said', 'the'..."
                 value={form.sightwords}
                 onChange={(e) => setForm((f) => ({ ...f, sightwords: e.target.value }))}
               />
@@ -224,7 +222,6 @@ export function LiteracySessionLogs({ sessions, playerId, canEdit }: Props) {
               <Label>Readers</Label>
               <Textarea
                 rows={2}
-                placeholder="e.g. Oxford Level 3 – 'Kipper's Birthday'..."
                 value={form.readers}
                 onChange={(e) => setForm((f) => ({ ...f, readers: e.target.value }))}
               />
@@ -234,7 +231,6 @@ export function LiteracySessionLogs({ sessions, playerId, canEdit }: Props) {
               <Label>Notes</Label>
               <Textarea
                 rows={2}
-                placeholder="Any additional observations..."
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               />

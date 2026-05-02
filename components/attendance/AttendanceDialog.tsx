@@ -47,7 +47,7 @@ interface Player {
   id: string
   firstName: string
   lastName: string
-  teamId: string | null
+  teamIds: string[]
 }
 
 interface AttendanceRecord {
@@ -95,7 +95,7 @@ export function AttendanceDialog({
     if (selectedTeam === 'all') {
       return players
     }
-    return players.filter((p) => p.teamId === selectedTeam)
+    return players.filter((p) => p.teamIds.includes(selectedTeam))
   }, [players, selectedTeam])
 
   const loadExistingAttendance = useCallback(async () => {
@@ -170,7 +170,9 @@ export function AttendanceDialog({
         ([playerId, record]) => ({
           date: dateString,
           playerId,
-          teamId: players.find((p) => p.id === playerId)?.teamId || null,
+          teamId: selectedTeam !== 'all'
+            ? selectedTeam
+            : (players.find((p) => p.id === playerId)?.teamIds[0] || null),
           points: record.points,
           updatedByUserId: user.id,
         })
@@ -248,7 +250,6 @@ export function AttendanceDialog({
                   points: 1,
                   exists: false,
                 }
-                const team = teams.find((t) => t.id === player.teamId)
 
                 return (
                   <div key={player.id} className="rounded-md border p-3">
@@ -256,7 +257,9 @@ export function AttendanceDialog({
                       {player.firstName} {player.lastName}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {team?.name || 'No team'}
+                      {player.teamIds.length > 0
+                        ? player.teamIds.map((id) => teams.find((t) => t.id === id)?.name).filter(Boolean).join(', ')
+                        : 'No team'}
                     </p>
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <span className="text-sm text-muted-foreground">Points</span>
@@ -297,7 +300,9 @@ export function AttendanceDialog({
                       points: 1,
                       exists: false,
                     }
-                    const team = teams.find((t) => t.id === player.teamId)
+                    const playerTeams = player.teamIds
+                      .map((id) => teams.find((t) => t.id === id))
+                      .filter(Boolean) as Team[]
 
                     return (
                       <TableRow key={player.id}>
@@ -305,8 +310,12 @@ export function AttendanceDialog({
                           {player.firstName} {player.lastName}
                         </TableCell>
                         <TableCell>
-                          {team ? (
-                            <Badge variant="secondary">{team.name}</Badge>
+                          {playerTeams.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {playerTeams.map((t) => (
+                                <Badge key={t.id} variant="secondary">{t.name}</Badge>
+                              ))}
+                            </div>
                           ) : (
                             <span className="text-muted-foreground">No team</span>
                           )}

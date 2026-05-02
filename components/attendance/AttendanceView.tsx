@@ -15,7 +15,7 @@ interface Player {
   id: string
   firstName: string
   lastName: string
-  teamId: string | null
+  teamIds: string[]
 }
 
 interface AttendanceViewProps {

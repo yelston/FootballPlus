@@ -15,6 +15,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Briefcase,
 } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'Players', href: '/players', icon: UserCircle },
   { name: 'Teams', href: '/teams', icon: UsersRound },
   { name: 'Attendance', href: '/attendance', icon: Calendar },
+  { name: 'Staff', href: '/staff', icon: Briefcase, roles: ['admin', 'board'] },
   { name: 'Positions', href: '/positions', icon: LayoutList },
 ]
 

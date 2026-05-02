@@ -346,6 +346,112 @@ export interface Database {
           updatedAt?: string
         }
       }
+      staff_costing: {
+        Row: {
+          id: string
+          userId: string | null
+          role: string | null
+          employmentType: string | null
+          monthlyGrossPay: number | null
+          employerCpfPercent: number | null
+          otherMonthlyCost: number | null
+          monthlyCapacityHours: number | null
+          allInMonthlyCost: number | null
+          blendedHourlyCost: number | null
+          notes: string | null
+          createdAt: string
+          updatedAt: string
+        }
+        Insert: {
+          id?: string
+          userId?: string | null
+          role?: string | null
+          employmentType?: string | null
+          monthlyGrossPay?: number | null
+          employerCpfPercent?: number | null
+          otherMonthlyCost?: number | null
+          monthlyCapacityHours?: number | null
+          allInMonthlyCost?: number | null
+          blendedHourlyCost?: number | null
+          notes?: string | null
+          createdAt?: string
+          updatedAt?: string
+        }
+        Update: {
+          id?: string
+          userId?: string | null
+          role?: string | null
+          employmentType?: string | null
+          monthlyGrossPay?: number | null
+          employerCpfPercent?: number | null
+          otherMonthlyCost?: number | null
+          monthlyCapacityHours?: number | null
+          allInMonthlyCost?: number | null
+          blendedHourlyCost?: number | null
+          notes?: string | null
+          createdAt?: string
+          updatedAt?: string
+        }
+      }
+      staff_timesheet: {
+        Row: {
+          id: string
+          date: string
+          weekCommencing: string
+          userId: string | null
+          role: string | null
+          program: string | null
+          fundingSource: string | null
+          activityType: string | null
+          hours: number
+          hourlyCost: number | null
+          allocatedLabourCost: number | null
+          quarter: string | null
+          month: string | null
+          notes: string | null
+          approved: boolean
+          createdAt: string
+          updatedAt: string
+        }
+        Insert: {
+          id?: string
+          date: string
+          weekCommencing: string
+          userId?: string | null
+          role?: string | null
+          program?: string | null
+          fundingSource?: string | null
+          activityType?: string | null
+          hours: number
+          hourlyCost?: number | null
+          allocatedLabourCost?: number | null
+          quarter?: string | null
+          month?: string | null
+          notes?: string | null
+          approved?: boolean
+          createdAt?: string
+          updatedAt?: string
+        }
+        Update: {
+          id?: string
+          date?: string
+          weekCommencing?: string
+          userId?: string | null
+          role?: string | null
+          program?: string | null
+          fundingSource?: string | null
+          activityType?: string | null
+          hours?: number
+          hourlyCost?: number | null
+          allocatedLabourCost?: number | null
+          quarter?: string | null
+          month?: string | null
+          notes?: string | null
+          approved?: boolean
+          createdAt?: string
+          updatedAt?: string
+        }
+      }
     }
   }
 }
