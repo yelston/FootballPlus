@@ -267,7 +267,6 @@ export function TimesheetDialog({
     selectedDay, selectedMonth, selectedYear, daysInMonth,
     hours, userId, role, program, fundingSource, activityType,
     hourlyCost, allocatedLabourCost, notes, approved, entry, onOpenChange, router,
-    costingMap,
   ])
 
   const HeaderComponent = isMobile ? SheetHeader : DialogHeader
@@ -442,7 +441,7 @@ export function TimesheetDialog({
               <span className="relative group cursor-help">
                 <Info className="h-3 w-3 text-muted-foreground" />
                 <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-52 rounded-md border bg-popover px-2 py-1.5 text-xs text-popover-foreground shadow-md invisible group-hover:visible z-50 pointer-events-none">
-                  Auto-populated from the Cost Engine tab based on the selected staff member's blended hourly rate.
+                  Auto-populated from the Cost Engine tab based on the selected staff member&apos;s blended hourly rate.
                 </span>
               </span>
             </div>
