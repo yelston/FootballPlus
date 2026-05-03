@@ -6,7 +6,6 @@ import type {
   CostingData,
 } from './types'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = any
 
 export async function fetchPlayerStats(supabase: AnySupabase): Promise<PlayerStatsData> {

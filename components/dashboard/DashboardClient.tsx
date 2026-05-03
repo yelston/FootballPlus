@@ -54,7 +54,7 @@ export function DashboardClient({ user, initialData, defaultPreset }: DashboardC
       if (isAdminOrBoard && staff) setStaffData(staff)
       setLoading(false)
     })
-  }, [preset])
+  }, [preset, initialData.playerStats.total, isAdminOrBoard])
 
   const dateRange = getDateRangeForPreset(preset)
 
