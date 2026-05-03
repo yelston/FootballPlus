@@ -523,7 +523,8 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
                 <p className="text-sm text-muted-foreground">
                   {isEditing
                     ? 'Update player profile information.'
-                    : 'Create a complete youth academy profile.'}
+                    : 'Create a complete youth academy profile.'}{' '}
+                  <span className="text-destructive">*</span> Required
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -593,7 +594,7 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
               <h2 className="text-base font-semibold">Identity</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="firstName">First Name *</Label>
+                  <Label htmlFor="firstName">First Name <span className="text-destructive">*</span></Label>
                   <Input
                     id="firstName"
                     name="firstName"
@@ -607,7 +608,7 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Label htmlFor="lastName">Last Name <span className="text-destructive">*</span></Label>
                   <Input
                     id="lastName"
                     name="lastName"
@@ -631,7 +632,7 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="dob">Date of Birth *</Label>
+                  <Label htmlFor="dob">Date of Birth <span className="text-destructive">*</span></Label>
                   <div
                     className={cn(
                       fieldErrors.dob && 'rounded-md ring-2 ring-destructive ring-offset-2'
@@ -676,7 +677,7 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
                 </div>
 
                 <div className="grid gap-2">
-                  <Label>Teams *</Label>
+                  <Label>Teams <span className="text-destructive">*</span></Label>
                   <div
                     className={cn(
                       'rounded-md border p-3 space-y-2 max-h-48 overflow-y-auto',
@@ -722,7 +723,7 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
                 </div>
 
                 <div className="grid gap-2">
-                  <Label>Positions *</Label>
+                  <Label>Positions <span className="text-destructive">*</span></Label>
                   <div
                     className={cn(
                       'relative',
@@ -819,7 +820,7 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
               <h2 className="text-base font-semibold">Guardian & Emergency</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="guardianName">Guardian Name *</Label>
+                  <Label htmlFor="guardianName">Guardian Name <span className="text-destructive">*</span></Label>
                   <Input
                     id="guardianName"
                     name="guardianName"
@@ -841,7 +842,7 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="guardianPhone">Guardian Phone *</Label>
+                  <Label htmlFor="guardianPhone">Guardian Phone <span className="text-destructive">*</span></Label>
                   <Input
                     id="guardianPhone"
                     name="guardianPhone"
