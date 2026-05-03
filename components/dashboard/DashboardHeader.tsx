@@ -31,22 +31,24 @@ export function DashboardHeader({ userName, preset, onPresetChange, loading }: D
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">Welcome back, {userName}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{label}</p>
       </div>
-      <div className="flex items-center gap-2 sm:mt-1">
-        {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-        <SelectRoot value={preset} onValueChange={(v) => onPresetChange(v as DashboardPreset)}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {DASHBOARD_PRESET_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </SelectRoot>
+      <div className="flex flex-col items-start gap-1 sm:items-end sm:mt-1">
+        <div className="flex items-center gap-2">
+          {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          <SelectRoot value={preset} onValueChange={(v) => onPresetChange(v as DashboardPreset)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DASHBOARD_PRESET_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </SelectRoot>
+        </div>
+        <p className="text-xs text-muted-foreground">{label}</p>
       </div>
     </div>
   )

@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Search, Filter } from 'lucide-react'
+import { Plus, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { differenceInYears } from 'date-fns'
 import type { Database } from '@/types/database'
 
@@ -57,14 +57,22 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
   const initialSearchQuery = searchParams.get('q') || ''
   const initialTeamFilter = searchParams.get('team')?.split(',').filter(Boolean) || []
   const initialPositionFilter = searchParams.get('position')?.split(',').filter(Boolean) || []
+  const initialPage = parseInt(searchParams.get('page') || '1', 10)
+
+  const PAGE_SIZE = 20
 
   const [players] = useState<Player[]>(initialPlayers)
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery)
   const [teamFilter, setTeamFilter] = useState<string[]>(initialTeamFilter)
   const [positionFilter, setPositionFilter] = useState<string[]>(initialPositionFilter)
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState(initialPage)
 
   const positionNames = useMemo(() => positions.map((p) => p.name), [positions])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, teamFilter, positionFilter])
 
   useEffect(() => {
     const params = new URLSearchParams()
@@ -81,10 +89,14 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
       params.set('position', positionFilter.join(','))
     }
 
+    if (currentPage > 1) {
+      params.set('page', String(currentPage))
+    }
+
     const query = params.toString()
     const href = query ? `${pathname}?${query}` : pathname
     router.replace(href, { scroll: false })
-  }, [searchQuery, teamFilter, positionFilter, pathname, router])
+  }, [searchQuery, teamFilter, positionFilter, currentPage, pathname, router])
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams()
@@ -100,7 +112,7 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
     return params.toString()
   }, [searchQuery, teamFilter, positionFilter])
 
-  const filteredPlayers = players.filter((player) => {
+  const filteredPlayers = useMemo(() => players.filter((player) => {
     const matchesSearch =
       searchQuery === '' ||
       `${player.firstName} ${player.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
@@ -116,7 +128,14 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
       (player.positions && player.positions.some((pos) => positionFilter.includes(pos)))
 
     return matchesSearch && matchesTeam && matchesPosition
-  })
+  }), [players, searchQuery, teamFilter, positionFilter])
+
+  const totalPages = Math.ceil(filteredPlayers.length / PAGE_SIZE)
+  const safeCurrentPage = Math.min(currentPage, Math.max(totalPages, 1))
+  const paginatedPlayers = filteredPlayers.slice(
+    (safeCurrentPage - 1) * PAGE_SIZE,
+    safeCurrentPage * PAGE_SIZE
+  )
 
   const detailHref = (playerId: string) => {
     return queryString ? `/players/${playerId}?${queryString}` : `/players/${playerId}`
@@ -259,7 +278,7 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
       ) : (
         <>
           <div className="space-y-3 md:hidden">
-            {filteredPlayers.map((player) => {
+            {paginatedPlayers.map((player) => {
               const age = differenceInYears(new Date(), new Date(player.dob))
               return (
                 <div
@@ -308,7 +327,7 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPlayers.map((player) => {
+                {paginatedPlayers.map((player) => {
                   const age = differenceInYears(new Date(), new Date(player.dob))
                   return (
                     <TableRow
@@ -360,6 +379,35 @@ export function PlayersList({ initialPlayers, teams, positions, canEdit }: Playe
             </Table>
           </div>
         </>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-sm text-muted-foreground">
+            Showing {(safeCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(safeCurrentPage * PAGE_SIZE, filteredPlayers.length)} of {filteredPlayers.length} players
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={safeCurrentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="px-3 text-sm">
+              {safeCurrentPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={safeCurrentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   )

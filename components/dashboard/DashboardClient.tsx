@@ -60,12 +60,14 @@ export function DashboardClient({ user, initialData, defaultPreset }: DashboardC
 
   return (
     <div className="space-y-6">
-      <DashboardHeader
-        userName={user.name}
-        preset={preset}
-        onPresetChange={setPreset}
-        loading={loading}
-      />
+      <div className="sticky top-0 z-10 -mx-4 -mt-2 bg-background/95 px-4 pt-2 pb-4 backdrop-blur-sm lg:-mx-8 lg:-mt-8 lg:px-8 lg:pt-8 border-b border-border/40">
+        <DashboardHeader
+          userName={user.name}
+          preset={preset}
+          onPresetChange={setPreset}
+          loading={loading}
+        />
+      </div>
 
       <KPISummaryRow
         playerStats={initialData.playerStats}
