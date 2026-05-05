@@ -85,7 +85,7 @@ export function HouseList({ initialHouses, canEdit }: HouseListProps) {
     if (editingHouse) {
       const { error: updateError } = await supabase
         .from('houses')
-        .update({ name, description, updatedAt: new Date().toISOString() })
+        .update({ name, description, updated_at: new Date().toISOString() })
         .eq('id', editingHouse.id)
 
       if (updateError) {
