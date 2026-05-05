@@ -1,11 +1,11 @@
 import { differenceInYears, format, subDays } from 'date-fns'
 import { redirect, notFound } from 'next/navigation'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, getUserAssignedTeamIds } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { PlayerBackButton } from '@/components/players/PlayerBackButton'
 import { PlayerDetailActions } from '@/components/players/PlayerDetailActions'
 import { PlayerDetailTabs } from '@/components/players/PlayerDetailTabs'
-import type { PlayerDetailViewModel, LiteracySession } from '@/types/player'
+import type { PlayerDetailViewModel, LiteracySession, PlayerNote } from '@/types/player'
 import type { Database } from '@/types/database'
 
 type AttendanceRow = {
@@ -29,6 +29,7 @@ export default async function PlayerDetailPage({
     redirect('/login')
   }
 
+  const isUnrestricted = user.role === 'admin' || user.role === 'board'
   const canEdit = user.role === 'admin' || user.role === 'coach' || user.role === 'staff'
   const canViewSensitive = canEdit
 
@@ -52,8 +53,9 @@ export default async function PlayerDetailPage({
     { data: last30Attendance },
     { data: latestAttendance },
     { data: sessionsData },
+    { data: notesData },
   ] = await Promise.all([
-    (supabase.from('players').select('*, player_teams(teamId, teams(id, name))').eq('id', params.id).single() as any),
+    (supabase.from('players').select('*, player_teams(teamId, teams(id, name)), houses(id, name)').eq('id', params.id).single() as any),
     supabase
       .from('attendance')
       .select('date, points')
@@ -74,12 +76,27 @@ export default async function PlayerDetailPage({
       .order('date', { ascending: true })
       .order('createdAt', { ascending: true })
       .returns<LiteracySessionRow[]>(),
+    (supabase as any)
+      .from('player_notes')
+      .select('*')
+      .eq('playerId', params.id)
+      .order('date', { ascending: false })
+      .order('createdAt', { ascending: false }),
   ])
 
   const player = playerData as (PlayerRow & { player_teams: PlayerTeamEntry[] }) | null
 
   if (!player) {
     notFound()
+  }
+
+  if (!isUnrestricted) {
+    const assignedTeamIds = await getUserAssignedTeamIds(user.id)
+    const playerTeamIds = (player.player_teams || []).map((pt) => pt.teamId)
+    const hasAccess = playerTeamIds.some((tid) => assignedTeamIds.includes(tid))
+    if (!hasAccess) {
+      notFound()
+    }
   }
 
   const age = differenceInYears(new Date(), new Date(player.dob))
@@ -110,9 +127,22 @@ export default async function PlayerDetailPage({
     .map((pt) => pt.teams)
     .filter((t): t is { id: string; name: string } => t !== null)
 
+  const house = ((player as any).houses as { id: string; name: string } | null) ?? null
+
+  const playerNotes: PlayerNote[] = (notesData || []).map((n: any) => ({
+    id: n.id,
+    playerId: n.playerId,
+    date: n.date,
+    notes: n.notes,
+    loggedByUserId: n.loggedByUserId,
+    createdAt: n.createdAt,
+    updatedAt: n.updatedAt,
+  }))
+
   const viewModel: PlayerDetailViewModel = {
     ...player,
     teams,
+    house,
     attendanceSummary: {
       last30DaysTotalSessions: last30Total,
       last30DaysAttendedSessions: last30Attended,
@@ -120,6 +150,7 @@ export default async function PlayerDetailPage({
       lastAttendanceDate,
     },
     literacySessions,
+    playerNotes,
   }
 
   return (

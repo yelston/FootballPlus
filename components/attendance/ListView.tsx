@@ -59,9 +59,10 @@ interface ListViewProps {
   teams: Team[]
   players: Player[]
   canEdit: boolean
+  allowedTeamIds: string[] | null
 }
 
-export function ListView({ teams, players, canEdit }: ListViewProps) {
+export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewProps) {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -79,7 +80,7 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
   const loadAttendance = async () => {
     setLoading(true)
     const supabase = createClient()
-    const { data, error } = await supabase
+    let query = supabase
       .from('attendance')
       .select(`
         *,
@@ -88,7 +89,16 @@ export function ListView({ teams, players, canEdit }: ListViewProps) {
       `)
       .order('date', { ascending: false })
       .limit(100)
-      .returns<AttendanceRecordRow[]>()
+
+    if (allowedTeamIds !== null && allowedTeamIds.length > 0) {
+      query = query.in('teamId', allowedTeamIds)
+    } else if (allowedTeamIds !== null && allowedTeamIds.length === 0) {
+      setAttendance([])
+      setLoading(false)
+      return
+    }
+
+    const { data, error } = await query.returns<AttendanceRecordRow[]>()
 
     if (!error && data) {
       setAttendance(data)

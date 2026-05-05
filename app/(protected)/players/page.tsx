@@ -1,4 +1,4 @@
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, getUserAssignedTeamIds } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PlayersList } from '@/components/players/PlayersList'
@@ -18,12 +18,9 @@ export default async function PlayersPage() {
   }
 
   const supabase = createClient()
-  const [{ data: players }, { data: teams }, { data: positions }] = await Promise.all([
-    supabase
-      .from('players')
-      .select('*, player_teams(teamId, teams(id, name))')
-      .order('createdAt', { ascending: false })
-      .returns<PlayerWithTeams[]>(),
+  const isUnrestricted = user.role === 'admin' || user.role === 'board'
+
+  const [{ data: allTeams }, { data: positions }] = await Promise.all([
     supabase
       .from('teams')
       .select('id, name')
@@ -36,6 +33,40 @@ export default async function PlayersPage() {
       .returns<Pick<PositionRow, 'id' | 'name'>[]>(),
   ])
 
+  let players: PlayerWithTeams[] = []
+  let teams: Pick<TeamRow, 'id' | 'name'>[] = allTeams || []
+
+  if (isUnrestricted) {
+    const { data } = await supabase
+      .from('players')
+      .select('*, player_teams(teamId, teams(id, name))')
+      .order('createdAt', { ascending: false })
+      .returns<PlayerWithTeams[]>()
+    players = data || []
+  } else {
+    const assignedTeamIds = await getUserAssignedTeamIds(user.id)
+    teams = (allTeams || []).filter((t) => assignedTeamIds.includes(t.id))
+
+    if (assignedTeamIds.length > 0) {
+      const { data: playerTeamRows } = await supabase
+        .from('player_teams')
+        .select('playerId')
+        .in('teamId', assignedTeamIds)
+        .returns<{ playerId: string }[]>()
+      const playerIds = [...new Set((playerTeamRows || []).map((pt) => pt.playerId))]
+
+      if (playerIds.length > 0) {
+        const { data } = await supabase
+          .from('players')
+          .select('*, player_teams(teamId, teams(id, name))')
+          .in('id', playerIds)
+          .order('createdAt', { ascending: false })
+          .returns<PlayerWithTeams[]>()
+        players = data || []
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -46,8 +77,8 @@ export default async function PlayersPage() {
       </div>
 
       <PlayersList
-        initialPlayers={players || []}
-        teams={teams || []}
+        initialPlayers={players}
+        teams={teams}
         positions={positions || []}
         canEdit={user.role === 'admin' || user.role === 'coach' || user.role === 'staff'}
       />

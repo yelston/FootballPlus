@@ -48,6 +48,7 @@ interface Team {
   name: string
   mainCoachId: string | null
   coachIds: string[]
+  staffIds: string[]
   volunteerIds: string[]
   notes: string | null
   createdAt: string
@@ -87,8 +88,9 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
   )
 
   const coaches = users.filter((u) => u.role === 'coach' || u.role === 'admin')
+  const staff = users.filter((u) => u.role === 'staff')
   const volunteers = users.filter((u) => u.role === 'volunteer')
-  const supportTeamMembers = [...coaches, ...volunteers]
+  const supportTeamMembers = [...coaches, ...staff, ...volunteers]
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -113,6 +115,9 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
     const coachIds = selectedSupportTeamIds
       .filter((id) => coaches.some((c) => c.id === id))
       .filter((id) => id !== mainCoachId)
+    const staffIds = selectedSupportTeamIds.filter((id) =>
+      staff.some((s) => s.id === id)
+    )
     const volunteerIds = selectedSupportTeamIds.filter((id) =>
       volunteers.some((v) => v.id === id)
     )
@@ -128,6 +133,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
           name,
           mainCoachId: mainCoachId || null,
           coachIds,
+          staffIds,
           volunteerIds,
           notes: notes || null,
         })
@@ -147,6 +153,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
                   mainCoachId: mainCoachId || null,
                   mainCoach,
                   coachIds,
+                  staffIds,
                   volunteerIds,
                   notes: notes || null,
                 }
@@ -167,6 +174,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
           name,
           mainCoachId: mainCoachId || null,
           coachIds,
+          staffIds,
           volunteerIds,
           notes: notes || null,
         })
@@ -191,6 +199,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
     setEditingTeam(team)
     setSelectedSupportTeamIds([
       ...(team.coachIds || []),
+      ...(team.staffIds || []),
       ...(team.volunteerIds || []),
     ])
     setIsDialogOpen(true)
@@ -261,7 +270,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
           </Select>
         </div>
         <div className="grid gap-2">
-          <Label>Support Team (Coaches & Volunteers)</Label>
+          <Label>Support Team (Coaches, Staff & Volunteers)</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
             {supportTeamMembers.map((member) => (
               <label key={member.id} className="flex items-center space-x-2 cursor-pointer">

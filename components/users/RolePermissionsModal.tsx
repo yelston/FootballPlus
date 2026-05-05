@@ -93,6 +93,16 @@ const PAGES: { label: string; permissions: Record<RoleKey, Permission> }[] = [
       volunteer: 'view',
     },
   },
+  {
+    label: 'Staff',
+    permissions: {
+      admin: 'view+write',
+      board: 'view',
+      coach: 'none',
+      staff: 'none',
+      volunteer: 'none',
+    },
+  },
 ]
 
 function PermissionCell({ permission }: { permission: Permission }) {

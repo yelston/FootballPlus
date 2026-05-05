@@ -26,7 +26,7 @@ type AttendanceRow = Database['public']['Tables']['attendance']['Row']
 type PlayerRow = Database['public']['Tables']['players']['Row']
 type TeamRow = Database['public']['Tables']['teams']['Row']
 type AnalyticsRecord = Pick<AttendanceRow, 'playerId' | 'points'> & {
-  players: Pick<PlayerRow, 'firstName' | 'lastName'> | null
+  players: (Pick<PlayerRow, 'firstName' | 'lastName'> & { houses: { name: string } | null }) | null
   teams: Pick<TeamRow, 'name'> | null
 }
 
@@ -58,13 +58,23 @@ interface TeamStats {
   isSitg: boolean
 }
 
-interface AnalyticsViewProps {
-  teams: Team[]
+interface HouseStats {
+  houseId: string
+  houseName: string
+  totalPoints: number
+  sessionCount: number
+  playerCount: number
 }
 
-export function AnalyticsView({ teams }: AnalyticsViewProps) {
+interface AnalyticsViewProps {
+  teams: Team[]
+  allowedTeamIds: string[] | null
+}
+
+export function AnalyticsView({ teams, allowedTeamIds }: AnalyticsViewProps) {
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([])
   const [teamStats, setTeamStats] = useState<TeamStats[]>([])
+  const [houseStats, setHouseStats] = useState<HouseStats[]>([])
   const [loading, setLoading] = useState(true)
   const [datePreset, setDatePreset] = useState<DateRangePreset>('thisWeek')
   const [customDateFrom, setCustomDateFrom] = useState('')
@@ -80,6 +90,14 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
   }, [datePreset, customDateFrom, customDateTo])
 
   const loadAnalytics = useCallback(async () => {
+    if (allowedTeamIds !== null && allowedTeamIds.length === 0) {
+      setPlayerStats([])
+      setTeamStats([])
+      setHouseStats([])
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     const supabase = createClient()
 
@@ -88,10 +106,13 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
       .select(`
         playerId,
         points,
-        players(firstName, lastName),
+        players(firstName, lastName, houses(name)),
         teams(name)
       `)
 
+    if (allowedTeamIds !== null) {
+      query = query.in('teamId', allowedTeamIds)
+    }
     if (activeDateRange.from) {
       query = query.gte('date', activeDateRange.from)
     }
@@ -166,10 +187,42 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
       })
 
       setTeamStats(Array.from(teamMap.values()).sort((a, b) => b.totalPoints - a.totalPoints))
+
+      // Calculate house stats
+      const houseMap = new Map<string, HouseStats>()
+      const playersPerHouse = new Map<string, Set<string>>()
+
+      data.forEach((record) => {
+        const houseName = record.players?.houses?.name
+        const houseId = houseName ?? 'no-house'
+        const displayName = houseName ?? 'No House'
+
+        if (!houseMap.has(houseId)) {
+          houseMap.set(houseId, {
+            houseId,
+            houseName: displayName,
+            totalPoints: 0,
+            sessionCount: 0,
+            playerCount: 0,
+          })
+          playersPerHouse.set(houseId, new Set())
+        }
+        const stats = houseMap.get(houseId)!
+        stats.totalPoints += record.points
+        stats.sessionCount += 1
+        playersPerHouse.get(houseId)!.add(record.playerId)
+      })
+
+      playersPerHouse.forEach((playerSet, houseId) => {
+        const stats = houseMap.get(houseId)
+        if (stats) stats.playerCount = playerSet.size
+      })
+
+      setHouseStats(Array.from(houseMap.values()).sort((a, b) => b.totalPoints - a.totalPoints))
     }
 
     setLoading(false)
-  }, [activeDateRange.from, activeDateRange.to, teamFilter])
+  }, [activeDateRange.from, activeDateRange.to, teamFilter, allowedTeamIds])
 
   useEffect(() => {
     loadAnalytics()
@@ -383,6 +436,61 @@ export function AnalyticsView({ teams }: AnalyticsViewProps) {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>House Statistics</CardTitle>
+          <CardDescription>Total points and sessions by house</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading...
+            </div>
+          ) : houseStats.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No data available
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2 md:hidden">
+                {houseStats.map((stat) => (
+                  <div key={stat.houseId} className="rounded-md border p-3">
+                    <p className="font-semibold">{stat.houseName}</p>
+                    <div className="mt-1 flex items-center gap-4 text-sm">
+                      <span>Players: <span className="font-medium">{stat.playerCount}</span></span>
+                      <span>Points: <span className="font-medium">{stat.totalPoints}</span></span>
+                      <span>Sessions: <span className="font-medium">{stat.sessionCount}</span></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden md:block rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>House</TableHead>
+                      <TableHead className="text-right">Players</TableHead>
+                      <TableHead className="text-right">Total Points</TableHead>
+                      <TableHead className="text-right">Sessions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {houseStats.map((stat) => (
+                      <TableRow key={stat.houseId}>
+                        <TableCell className="font-medium">{stat.houseName}</TableCell>
+                        <TableCell className="text-right">{stat.playerCount}</TableCell>
+                        <TableCell className="text-right font-medium">{stat.totalPoints}</TableCell>
+                        <TableCell className="text-right">{stat.sessionCount}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

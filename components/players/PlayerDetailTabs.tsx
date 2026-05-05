@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { LiteracySessionLogs } from '@/components/players/LiteracySessionLogs'
+import { PlayerNoteLogs } from '@/components/players/PlayerNoteLogs'
 import type { PlayerDetailViewModel } from '@/types/player'
 
 function StatRow({ label, value }: { label: string; value: string }) {
@@ -79,7 +80,6 @@ const YOYO_DATA = {
 }
 
 function NormativeTable({
-  title,
   subtitle,
   headers,
   rows,
@@ -91,7 +91,6 @@ function NormativeTable({
 }) {
   return (
     <div>
-      <p className="text-xs font-semibold text-foreground mb-0.5">{title}</p>
       <p className="text-xs text-muted-foreground mb-2">{subtitle}</p>
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-xs border-collapse">
@@ -247,6 +246,10 @@ export function PlayerDetailTabs({ viewModel, age, canViewSensitive, canEdit, st
               <StatRow
                 label="Jersey Number"
                 value={viewModel.jerseyNumber ? String(viewModel.jerseyNumber) : 'Not set'}
+              />
+              <StatRow
+                label="House"
+                value={viewModel.house ? viewModel.house.name : 'Not assigned'}
               />
             </CardContent>
           </Card>
@@ -654,16 +657,20 @@ export function PlayerDetailTabs({ viewModel, age, canViewSensitive, canEdit, st
             <CardTitle>Notes</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            {viewModel.significantLifeChange && (
-              <div>
-                <p className="text-muted-foreground mb-1">Significant Life Change</p>
-                <p className="whitespace-pre-wrap">{viewModel.significantLifeChange}</p>
-              </div>
-            )}
             <div>
               <p className="text-muted-foreground mb-1">General Notes</p>
               <p className="whitespace-pre-wrap">{viewModel.notes || 'No general notes.'}</p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5">
+            <PlayerNoteLogs
+              notes={viewModel.playerNotes}
+              playerId={viewModel.id}
+              canEdit={canEdit}
+            />
           </CardContent>
         </Card>
       </TabsContent>

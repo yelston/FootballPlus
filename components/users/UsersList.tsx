@@ -102,6 +102,12 @@ export function UsersList({ initialUsers }: UsersListProps) {
       return
     }
 
+    if (!editingUser && !email.trim()) {
+      setError('Email is required.')
+      setLoading(false)
+      return
+    }
+
     if (contactNumberRaw && contactNumberRaw !== contactNumber) {
       setError('Contact number can only contain digits.')
       setLoading(false)
@@ -257,7 +263,7 @@ export function UsersList({ initialUsers }: UsersListProps) {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{editingUser ? 'Email' : 'Email *'}</Label>
                   <Input
                     id="email"
                     name="email"

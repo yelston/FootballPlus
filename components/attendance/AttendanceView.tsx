@@ -21,9 +21,10 @@ interface AttendanceViewProps {
   teams: Team[]
   players: Player[]
   canEdit: boolean
+  allowedTeamIds: string[] | null
 }
 
-export function AttendanceView({ teams, players, canEdit }: AttendanceViewProps) {
+export function AttendanceView({ teams, players, canEdit, allowedTeamIds }: AttendanceViewProps) {
   return (
     <Tabs defaultValue="calendar" className="w-full min-w-0 overflow-hidden">
       <TabsList className="grid h-auto w-full min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] overflow-hidden lg:h-10">
@@ -38,13 +39,13 @@ export function AttendanceView({ teams, players, canEdit }: AttendanceViewProps)
         </TabsTrigger>
       </TabsList>
       <TabsContent value="calendar" className="mt-2 lg:mt-6">
-        <CalendarView teams={teams} players={players} canEdit={canEdit} />
+        <CalendarView teams={teams} players={players} canEdit={canEdit} allowedTeamIds={allowedTeamIds} />
       </TabsContent>
       <TabsContent value="list" className="mt-2 lg:mt-6">
-        <ListView teams={teams} players={players} canEdit={canEdit} />
+        <ListView teams={teams} players={players} canEdit={canEdit} allowedTeamIds={allowedTeamIds} />
       </TabsContent>
       <TabsContent value="analytics" className="mt-2 lg:mt-6">
-        <AnalyticsView teams={teams} />
+        <AnalyticsView teams={teams} allowedTeamIds={allowedTeamIds} />
       </TabsContent>
     </Tabs>
   )

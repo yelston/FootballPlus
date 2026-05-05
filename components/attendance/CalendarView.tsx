@@ -30,6 +30,7 @@ interface CalendarViewProps {
   teams: Team[]
   players: Player[]
   canEdit: boolean
+  allowedTeamIds: string[] | null
 }
 
 function getTeamName(teamId: string | null, teams: Team[]): string {
@@ -37,7 +38,7 @@ function getTeamName(teamId: string | null, teams: Team[]): string {
   return teams.find((t) => t.id === teamId)?.name ?? 'Unknown'
 }
 
-export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
+export function CalendarView({ teams, players, canEdit, allowedTeamIds }: CalendarViewProps) {
   const [selectedTeam, setSelectedTeam] = useState<string>('all')
   const filteredPlayers = selectedTeam === 'all'
     ? players
@@ -58,13 +59,21 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
   const rangeEnd = format(calendarEnd, 'yyyy-MM-dd')
 
   useEffect(() => {
+    if (allowedTeamIds !== null && allowedTeamIds.length === 0) {
+      setSubmissionsByDate({})
+      return
+    }
     let cancelled = false
     const supabase = createClient()
-    supabase
+    let query = supabase
       .from('attendance')
       .select('date, teamId')
       .gte('date', rangeStart)
       .lte('date', rangeEnd)
+    if (allowedTeamIds !== null) {
+      query = query.in('teamId', allowedTeamIds)
+    }
+    query
       .returns<Pick<AttendanceRow, 'date' | 'teamId'>[]>()
       .then(({ data }) => {
         if (cancelled || !data) return
@@ -88,7 +97,7 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
     return () => {
       cancelled = true
     }
-  }, [rangeStart, rangeEnd, teams])
+  }, [rangeStart, rangeEnd, teams, allowedTeamIds])
 
   const handleDateClick = (date: Date) => {
     if (canEdit || isSameDay(date, new Date())) {
@@ -106,12 +115,17 @@ export function CalendarView({ teams, players, canEdit }: CalendarViewProps) {
   }
 
   const handleDialogSuccess = () => {
+    if (allowedTeamIds !== null && allowedTeamIds.length === 0) return
     const supabase = createClient()
-    supabase
+    let query = supabase
       .from('attendance')
       .select('date, teamId')
       .gte('date', rangeStart)
       .lte('date', rangeEnd)
+    if (allowedTeamIds !== null) {
+      query = query.in('teamId', allowedTeamIds)
+    }
+    query
       .returns<Pick<AttendanceRow, 'date' | 'teamId'>[]>()
       .then(({ data }) => {
         if (!data) return

@@ -17,7 +17,10 @@ import { Badge } from '@/components/ui/badge'
 import { DateOfBirthPicker } from '@/components/ui/date-picker'
 import { useToast } from '@/components/ui/toast'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { LiteracySessionLogs } from '@/components/players/LiteracySessionLogs'
+import { PlayerNoteLogs } from '@/components/players/PlayerNoteLogs'
 import type { Database } from '@/types/database'
+import type { LiteracySession, PlayerNote } from '@/types/player'
 
 type PlayerRow = Database['public']['Tables']['players']['Row']
 
@@ -33,13 +36,21 @@ interface PositionOption {
   name: string
 }
 
+interface HouseOption {
+  id: string
+  name: string
+}
+
 interface PlayerFormPageProps {
   mode: PlayerFormMode
   teams: TeamOption[]
   positions: PositionOption[]
+  houses: HouseOption[]
   player?: PlayerRow
   initialTeamIds?: string[]
   initialTab?: string
+  literacySessions?: LiteracySession[]
+  playerNotes?: PlayerNote[]
 }
 
 function ScoreInput({
@@ -142,7 +153,7 @@ function NullableSelect({
   )
 }
 
-export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds, initialTab }: PlayerFormPageProps) {
+export function PlayerFormPage({ mode, teams, positions, houses, player, initialTeamIds, initialTab, literacySessions, playerNotes }: PlayerFormPageProps) {
   const router = useRouter()
   const toast = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -161,6 +172,7 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
   const [selectedPositions, setSelectedPositions] = useState<string[]>(player?.positions || [])
   const [positionsPopoverOpen, setPositionsPopoverOpen] = useState(false)
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>(initialTeamIds ?? [])
+  const [selectedHouseId, setSelectedHouseId] = useState<string>(player?.houseId ?? '')
   const [contactNumber, setContactNumber] = useState<string>(player?.contactNumber || '')
   const [guardianPhone, setGuardianPhone] = useState<string>(player?.guardianPhone || '')
   const [emergencyContactPhone, setEmergencyContactPhone] = useState<string>(
@@ -414,6 +426,7 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
           String(formData.get('emergencyContactPhone') || '').trim() || null,
         dominantFoot: String(formData.get('dominantFoot') || '').trim() || null,
         jerseyNumber: jerseyNumberRaw ? Number(jerseyNumberRaw) : null,
+        houseId: selectedHouseId || null,
         medicalNotes: String(formData.get('medicalNotes') || '').trim() || null,
         injuryStatus: String(formData.get('injuryStatus') || 'none').trim(),
         medicationNotes: String(formData.get('medicationNotes') || '').trim() || null,
@@ -450,8 +463,6 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
         // Group 5
         academicBaseline,
         academicCurrent,
-        // Group 6
-        significantLifeChange: String(formData.get('significantLifeChange') || '').trim() || null,
         // Group 7
         literacyEnrolled,
         literacyReadingBaseline,
@@ -674,6 +685,22 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
                   {fieldErrors.jerseyNumber && (
                     <p className="text-sm text-destructive">{fieldErrors.jerseyNumber}</p>
                   )}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="houseId">House</Label>
+                  <Select
+                    id="houseId"
+                    name="houseId"
+                    value={selectedHouseId}
+                    onChange={(e) => setSelectedHouseId(e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="">No house assigned</option>
+                    {houses.map((h) => (
+                      <option key={h.id} value={h.id}>{h.name}</option>
+                    ))}
+                  </Select>
                 </div>
 
                 <div className="grid gap-2">
@@ -1337,6 +1364,16 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
                 </div>
               </div>
             </section>
+
+            {isEditing && player && literacySessions !== undefined && (
+              <section className="rounded-lg border p-4 md:p-5">
+                <LiteracySessionLogs
+                  sessions={literacySessions}
+                  playerId={player.id}
+                  canEdit={true}
+                />
+              </section>
+            )}
           </TabsContent>
 
           {/* ── Notes Tab ── */}
@@ -1344,17 +1381,6 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
             <section className="rounded-lg border p-4 md:p-5">
               <h2 className="text-base font-semibold">Notes</h2>
               <div className="mt-4 grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="significantLifeChange">Significant Life Change?</Label>
-                  <Textarea
-                    id="significantLifeChange"
-                    name="significantLifeChange"
-                    rows={4}
-                    defaultValue={player?.significantLifeChange || ''}
-                    disabled={loading}
-                    placeholder="Note any significant life changes that may affect the player..."
-                  />
-                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="notes">General Notes</Label>
                   <Textarea
@@ -1367,6 +1393,16 @@ export function PlayerFormPage({ mode, teams, positions, player, initialTeamIds,
                 </div>
               </div>
             </section>
+
+            {isEditing && player && playerNotes !== undefined && (
+              <section className="rounded-lg border p-4 md:p-5">
+                <PlayerNoteLogs
+                  notes={playerNotes}
+                  playerId={player.id}
+                  canEdit={true}
+                />
+              </section>
+            )}
           </TabsContent>
         </Tabs>
       </form>

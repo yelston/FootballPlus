@@ -15,6 +15,7 @@ export interface User {
 }
 
 type UserRow = Database['public']['Tables']['users']['Row']
+type TeamRow = Database['public']['Tables']['teams']['Row']
 
 export async function getCurrentUser(): Promise<User | null> {
   const supabase = createClient()
@@ -66,4 +67,25 @@ export async function requireAdmin(): Promise<User> {
 
 export async function requireAdminOrCoach(): Promise<User> {
   return requireRole(['admin', 'coach'])
+}
+
+export async function requireAdminCoachOrStaff(): Promise<User> {
+  return requireRole(['admin', 'coach', 'staff'])
+}
+
+export async function getUserAssignedTeamIds(userId: string): Promise<string[]> {
+  const supabase = createClient()
+  const { data: teams } = await supabase
+    .from('teams')
+    .select('*')
+    .returns<TeamRow[]>()
+  if (!teams) return []
+  return teams
+    .filter(t =>
+      t.mainCoachId === userId ||
+      (t.coachIds || []).includes(userId) ||
+      (t.staffIds || []).includes(userId) ||
+      (t.volunteerIds || []).includes(userId)
+    )
+    .map(t => t.id)
 }

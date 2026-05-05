@@ -2,6 +2,16 @@ import type { Database } from '@/types/database'
 
 export type PlayerRow = Database['public']['Tables']['players']['Row']
 
+export interface PlayerNote {
+  id: string
+  playerId: string
+  date: string
+  notes: string
+  loggedByUserId: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface LiteracySession {
   id: string
   playerId: string
@@ -18,6 +28,7 @@ export interface LiteracySession {
 
 export interface PlayerDetailViewModel extends PlayerRow {
   teams: { id: string; name: string }[]
+  house: { id: string; name: string } | null
   attendanceSummary: {
     last30DaysTotalSessions: number
     last30DaysAttendedSessions: number
@@ -25,4 +36,5 @@ export interface PlayerDetailViewModel extends PlayerRow {
     lastAttendanceDate: string | null
   }
   literacySessions: LiteracySession[]
+  playerNotes: PlayerNote[]
 }

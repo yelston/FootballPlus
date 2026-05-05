@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Briefcase,
+  Home,
 } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { Button } from '@/components/ui/button'
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'FP Team', href: '/fp-team', icon: ShieldCheck, roles: ['admin'] },
   { name: 'Teams', href: '/teams', icon: UsersRound },
   { name: 'Positions', href: '/positions', icon: LayoutList },
+  { name: 'Houses', href: '/house', icon: Home },
 ]
 
 interface SidebarProps {

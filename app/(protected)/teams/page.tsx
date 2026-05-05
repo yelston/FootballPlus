@@ -24,7 +24,7 @@ export default async function TeamsPage() {
     supabase
       .from('users')
       .select('id, name, email, role')
-      .in('role', ['coach', 'volunteer', 'admin'])
+      .in('role', ['coach', 'staff', 'volunteer', 'admin'])
       .order('name')
       .returns<Pick<UserRow, 'id' | 'name' | 'email' | 'role'>[]>(),
     supabase

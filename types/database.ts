@@ -103,6 +103,7 @@ export interface Database {
           literacyReadingCurrent: number | null
           literacyReadingImprovement: number | null
           literacySessionsAttended: number | null
+          houseId: string | null
         }
         Insert: {
           id?: string
@@ -157,6 +158,7 @@ export interface Database {
           literacyReadingBaseline?: number | null
           literacyReadingCurrent?: number | null
           literacySessionsAttended?: number | null
+          houseId?: string | null
         }
         Update: {
           id?: string
@@ -211,6 +213,30 @@ export interface Database {
           literacyReadingBaseline?: number | null
           literacyReadingCurrent?: number | null
           literacySessionsAttended?: number | null
+          houseId?: string | null
+        }
+      }
+      houses: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          createdAt: string
+          updatedAt: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          createdAt?: string
+          updatedAt?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          createdAt?: string
+          updatedAt?: string
         }
       }
       teams: {
@@ -219,6 +245,7 @@ export interface Database {
           name: string
           mainCoachId: string | null
           coachIds: string[]
+          staffIds: string[]
           volunteerIds: string[]
           notes: string | null
           createdAt: string
@@ -228,6 +255,7 @@ export interface Database {
           name: string
           mainCoachId?: string | null
           coachIds?: string[]
+          staffIds?: string[]
           volunteerIds?: string[]
           notes?: string | null
           createdAt?: string
@@ -237,6 +265,7 @@ export interface Database {
           name?: string
           mainCoachId?: string | null
           coachIds?: string[]
+          staffIds?: string[]
           volunteerIds?: string[]
           notes?: string | null
           createdAt?: string
