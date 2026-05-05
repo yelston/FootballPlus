@@ -37,6 +37,7 @@ export interface Database {
           profileImageUrl?: string | null
           createdAt?: string
         }
+        Relationships: []
       }
       players: {
         Row: {
@@ -215,6 +216,7 @@ export interface Database {
           literacySessionsAttended?: number | null
           houseId?: string | null
         }
+        Relationships: []
       }
       houses: {
         Row: {
@@ -238,6 +240,7 @@ export interface Database {
           createdAt?: string
           updatedAt?: string
         }
+        Relationships: []
       }
       teams: {
         Row: {
@@ -270,6 +273,7 @@ export interface Database {
           notes?: string | null
           createdAt?: string
         }
+        Relationships: []
       }
       attendance: {
         Row: {
@@ -299,6 +303,7 @@ export interface Database {
           updatedByUserId?: string
           createdAt?: string
         }
+        Relationships: []
       }
       positions: {
         Row: {
@@ -319,6 +324,7 @@ export interface Database {
           sortOrder?: number | null
           createdAt?: string
         }
+        Relationships: []
       }
       player_teams: {
         Row: {
@@ -336,6 +342,7 @@ export interface Database {
           teamId?: string
           joinedAt?: string
         }
+        Relationships: []
       }
       literacy_sessions: {
         Row: {
@@ -374,6 +381,7 @@ export interface Database {
           createdAt?: string
           updatedAt?: string
         }
+        Relationships: []
       }
       staff_costing: {
         Row: {
@@ -421,6 +429,37 @@ export interface Database {
           createdAt?: string
           updatedAt?: string
         }
+        Relationships: []
+      }
+      player_notes: {
+        Row: {
+          id: string
+          playerId: string
+          date: string
+          notes: string
+          loggedByUserId: string
+          createdAt: string
+          updatedAt: string
+        }
+        Insert: {
+          id?: string
+          playerId: string
+          date: string
+          notes: string
+          loggedByUserId: string
+          createdAt?: string
+          updatedAt?: string
+        }
+        Update: {
+          id?: string
+          playerId?: string
+          date?: string
+          notes?: string
+          loggedByUserId?: string
+          createdAt?: string
+          updatedAt?: string
+        }
+        Relationships: []
       }
       staff_timesheet: {
         Row: {
@@ -480,7 +519,20 @@ export interface Database {
           createdAt?: string
           updatedAt?: string
         }
+        Relationships: []
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }

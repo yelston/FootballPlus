@@ -84,7 +84,7 @@ export function PlayerNoteLogs({ notes, playerId, canEdit }: Props) {
       updatedAt: new Date().toISOString(),
     }
 
-    const table = (supabase as any).from('player_notes')
+    const table = supabase.from('player_notes')
     const { error: err } = editing
       ? await table.update(payload).eq('id', editing.id)
       : await table.insert(payload)
