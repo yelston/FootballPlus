@@ -37,8 +37,9 @@ import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/toast'
-import { Plus, Edit, Search, Eye } from 'lucide-react'
+import { Plus, Edit, Search, Eye, Trash2 } from 'lucide-react'
 import { useIsMobile } from '@/lib/hooks/use-media-query'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { Database } from '@/types/database'
 
 type TeamRow = Database['public']['Tables']['teams']['Row']
@@ -67,9 +68,10 @@ interface TeamsListProps {
   initialTeams: Team[]
   users: User[]
   canEdit: boolean
+  canDelete: boolean
 }
 
-export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
+export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsListProps) {
   const router = useRouter()
   const toast = useToast()
   const isMobile = useIsMobile()
@@ -80,6 +82,8 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedSupportTeamIds, setSelectedSupportTeamIds] = useState<string[]>([])
+  const [deleteTarget, setDeleteTarget] = useState<Team | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const filteredTeams = teams.filter(
     (team) =>
@@ -216,6 +220,32 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
     setEditingTeam(null)
     setSelectedSupportTeamIds([])
     setError(null)
+  }
+
+  const openDeleteDialog = (team: Team) => {
+    setDeleteTarget(team)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setLoading(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('teams')
+      .delete()
+      .eq('id', deleteTarget.id)
+
+    if (error) {
+      toast.error(error.message)
+    } else {
+      setTeams(teams.filter((t) => t.id !== deleteTarget.id))
+      toast.success('Team deleted')
+      setIsDeleteDialogOpen(false)
+      setDeleteTarget(null)
+      router.refresh()
+    }
+    setLoading(false)
   }
 
   const FormHeaderComponent = isMobile ? SheetHeader : DialogHeader
@@ -391,7 +421,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
                       Players: {team.players?.[0]?.count ?? 0}
                     </p>
                   </div>
-                  {canEdit && (
+                  {(canEdit || canDelete) && (
                     <div className="flex shrink-0 gap-2">
                       <Button
                         variant="ghost"
@@ -404,16 +434,30 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
                           <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10"
-                        onClick={() => openEditDialog(team)}
-                        disabled={loading}
-                        aria-label="Edit team"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10"
+                          onClick={() => openEditDialog(team)}
+                          disabled={loading}
+                          aria-label="Edit team"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10 text-destructive hover:text-destructive"
+                          onClick={() => openDeleteDialog(team)}
+                          disabled={loading}
+                          aria-label="Delete team"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -427,7 +471,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
                   <TableHead>Name</TableHead>
                   <TableHead>Main Coach</TableHead>
                   <TableHead>Players</TableHead>
-                  {canEdit && <TableHead className="text-right">Actions</TableHead>}
+                  {(canEdit || canDelete) && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -447,7 +491,7 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
                       )}
                     </TableCell>
                     <TableCell>{team.players?.[0]?.count ?? 0}</TableCell>
-                    {canEdit && (
+                    {(canEdit || canDelete) && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
@@ -460,15 +504,29 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(team)}
-                            disabled={loading}
-                            aria-label="Edit team"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditDialog(team)}
+                              disabled={loading}
+                              aria-label="Edit team"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => openDeleteDialog(team)}
+                              disabled={loading}
+                              aria-label="Delete team"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     )}
@@ -479,6 +537,23 @@ export function TeamsList({ initialTeams, users, canEdit }: TeamsListProps) {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open)
+          if (!open) setDeleteTarget(null)
+        }}
+        title="Delete team?"
+        description={
+          deleteTarget
+            ? `This will permanently delete "${deleteTarget.name}". This action cannot be undone.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        loading={loading}
+      />
     </div>
   )
 }

@@ -58,6 +58,7 @@ export default async function TeamsPage() {
         initialTeams={teamsWithData}
         users={users || []}
         canEdit={user.role === 'admin' || user.role === 'coach' || user.role === 'staff'}
+        canDelete={user.role === 'admin'}
       />
     </div>
   )
