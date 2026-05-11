@@ -553,6 +553,7 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
         confirmLabel="Delete"
         onConfirm={handleDelete}
         loading={loading}
+        requireTypedConfirmation="delete"
       />
     </div>
   )

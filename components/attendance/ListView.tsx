@@ -239,15 +239,13 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
                         <p className="font-semibold">
                           {record.players?.firstName} {record.players?.lastName}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground mb-1">
                           {record.teams?.name || 'No team'}
                         </p>
-                        <p className="text-sm">
-                          {record.teams?.name?.toLowerCase().includes('stay in the game') ||
-                           record.teams?.name?.toLowerCase().includes('champions')
-                            ? 'Attended'
-                            : <>Points: <span className="font-medium">{record.points}</span></>}
-                        </p>
+                        <div className="flex gap-4 text-sm">
+                          <span>Attended: <span className="font-medium">Yes</span></span>
+                          <span>Points: <span className="font-medium">{record.points}</span></span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -257,7 +255,8 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
                         <TableRow>
                           <TableHead>Player</TableHead>
                           <TableHead>Team</TableHead>
-                          <TableHead className="text-right">Points/Attended</TableHead>
+                          <TableHead className="text-center">Attended</TableHead>
+                          <TableHead className="text-center">Points</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -271,12 +270,8 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
                                 <span className="text-muted-foreground">No team</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-right font-medium">
-                              {record.teams?.name?.toLowerCase().includes('stay in the game') ||
-                               record.teams?.name?.toLowerCase().includes('champions')
-                                ? 'Attended'
-                                : record.points}
-                            </TableCell>
+                            <TableCell className="text-center font-medium">Yes</TableCell>
+                            <TableCell className="text-center font-medium">{record.points}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

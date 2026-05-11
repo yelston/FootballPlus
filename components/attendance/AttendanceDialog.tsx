@@ -94,11 +94,6 @@ export function AttendanceDialog({
     onOpenChange(newOpen)
   }
 
-  const playerIsCheckboxOnly = (player: Player) =>
-    player.teamIds.some((id) =>
-      (teams.find((t) => t.id === id)?.name?.toLowerCase() ?? '').includes('stay in the game')
-    )
-
   const HeaderComponent = isMobile ? SheetHeader : DialogHeader
   const TitleComponent = isMobile ? SheetTitle : DialogTitle
   const DescriptionComponent = isMobile ? SheetDescription : DialogDescription
@@ -123,7 +118,7 @@ export function AttendanceDialog({
     players.forEach((player) => {
       const found = existing[player.id]
       records[player.id] = {
-        points: found?.points ?? 1,
+        points: found?.points ?? 0,
         attended: !!found,
         exists: !!found,
         id: found?.id,
@@ -174,14 +169,10 @@ export function AttendanceDialog({
 
     try {
       const entries = Object.entries(attendanceRecords)
-      const toSave = entries.filter(([playerId, r]) => {
-        const player = players.find((p) => p.id === playerId)
-        return player && playerIsCheckboxOnly(player) ? r.attended : true
-      })
+      const toSave = entries.filter(([, r]) => r.attended)
 
       const updates = toSave.map(([playerId, record]) => {
         const player = players.find((p) => p.id === playerId)
-        const checkboxOnly = player ? playerIsCheckboxOnly(player) : false
         return {
           date: dateString,
           playerId,
@@ -189,7 +180,7 @@ export function AttendanceDialog({
             selectedTeam !== 'all'
               ? selectedTeam
               : (player?.teamIds[0] || null),
-          points: checkboxOnly ? 1 : record.points,
+          points: record.points,
           updatedByUserId: user.id,
         }
       })
@@ -240,8 +231,7 @@ export function AttendanceDialog({
             {/* Mobile layout */}
             <div className="space-y-2 md:hidden">
               {players.map((player) => {
-                const record = attendanceRecords[player.id] ?? { points: 1, attended: false, exists: false }
-                const checkboxOnly = playerIsCheckboxOnly(player)
+                const record = attendanceRecords[player.id] ?? { points: 0, attended: false, exists: false }
                 const teamNames = player.teamIds
                   .map((id) => teams.find((t) => t.id === id)?.name)
                   .filter(Boolean)
@@ -249,17 +239,16 @@ export function AttendanceDialog({
 
                 return (
                   <div key={player.id} className="rounded-md border p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-semibold">
-                          {player.firstName} {player.lastName}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {teamNames || 'No team'}
-                        </p>
-                      </div>
-                      {checkboxOnly ? (
-                        canEdit ? (
+                    <p className="font-semibold">
+                      {player.firstName} {player.lastName}
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {teamNames || 'No team'}
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Attended</span>
+                        {canEdit ? (
                           <input
                             type="checkbox"
                             checked={record.attended}
@@ -269,24 +258,23 @@ export function AttendanceDialog({
                           />
                         ) : (
                           <span className="text-sm font-medium">{record.attended ? 'Yes' : 'No'}</span>
-                        )
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">Points</span>
-                          {canEdit ? (
-                            <Input
-                              type="number"
-                              min="0"
-                              value={record.points}
-                              onChange={(e) => handlePointsChange(player.id, parseInt(e.target.value) || 0)}
-                              disabled={loading}
-                              className="w-20"
-                            />
-                          ) : (
-                            <span className="font-medium">{record.points}</span>
-                          )}
-                        </div>
-                      )}
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Points</span>
+                        {canEdit ? (
+                          <Input
+                            type="number"
+                            min="0"
+                            value={record.points}
+                            onChange={(e) => handlePointsChange(player.id, parseInt(e.target.value) || 0)}
+                            disabled={loading}
+                            className="w-20"
+                          />
+                        ) : (
+                          <span className="font-medium">{record.points}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
@@ -300,13 +288,13 @@ export function AttendanceDialog({
                   <TableRow>
                     <TableHead>Player</TableHead>
                     <TableHead>Team</TableHead>
-                    <TableHead className="text-center">Points/Attended</TableHead>
+                    <TableHead className="text-center">Attended</TableHead>
+                    <TableHead className="text-center">Points</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {players.map((player) => {
-                    const record = attendanceRecords[player.id] ?? { points: 1, attended: false, exists: false }
-                    const checkboxOnly = playerIsCheckboxOnly(player)
+                    const record = attendanceRecords[player.id] ?? { points: 0, attended: false, exists: false }
                     const playerTeams = player.teamIds
                       .map((id) => teams.find((t) => t.id === id))
                       .filter(Boolean) as Team[]
@@ -327,10 +315,9 @@ export function AttendanceDialog({
                             <span className="text-muted-foreground">No team</span>
                           )}
                         </TableCell>
-                        {checkboxOnly ? (
-                          <TableCell>
+                        <TableCell className="text-center">
+                          {canEdit ? (
                             <div className="flex justify-center">
-                            {canEdit ? (
                               <input
                                 type="checkbox"
                                 checked={record.attended}
@@ -338,29 +325,27 @@ export function AttendanceDialog({
                                 disabled={loading}
                                 className="h-4 w-4 cursor-pointer accent-primary"
                               />
-                            ) : (
-                              <span className="font-medium">{record.attended ? 'Yes' : 'No'}</span>
-                            )}
                             </div>
-                          </TableCell>
-                        ) : (
-                          <TableCell className="text-center">
-                            {canEdit ? (
-                              <div className="flex justify-center">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={record.points}
-                                  onChange={(e) => handlePointsChange(player.id, parseInt(e.target.value) || 0)}
-                                  disabled={loading}
-                                  className="w-20"
-                                />
-                              </div>
-                            ) : (
-                              <span className="font-medium">{record.points}</span>
-                            )}
-                          </TableCell>
-                        )}
+                          ) : (
+                            <span className="font-medium">{record.attended ? 'Yes' : 'No'}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {canEdit ? (
+                            <div className="flex justify-center">
+                              <Input
+                                type="number"
+                                min="0"
+                                value={record.points}
+                                onChange={(e) => handlePointsChange(player.id, parseInt(e.target.value) || 0)}
+                                disabled={loading}
+                                className="w-20"
+                              />
+                            </div>
+                          ) : (
+                            <span className="font-medium">{record.points}</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     )
                   })}
