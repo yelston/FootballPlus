@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Briefcase,
   Home,
+  BarChart2,
 } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,7 @@ import type { UserRole } from '@/lib/auth'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Reporting', href: '/reporting', icon: BarChart2, roles: ['admin', 'board'] },
   { name: 'Players', href: '/players', icon: UserCircle },
   { name: 'Attendance', href: '/attendance', icon: Calendar },
   { name: 'Staff', href: '/staff', icon: Briefcase, roles: ['admin', 'board'] },

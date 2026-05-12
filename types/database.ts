@@ -461,6 +461,54 @@ export interface Database {
         }
         Relationships: []
       }
+      programme_metrics: {
+        Row: {
+          id: string
+          programme: string
+          metric_key: string
+          annual_target: string | null
+          q1_actual: string | null
+          q2_actual: string | null
+          q3_actual: string | null
+          q4_actual: string | null
+          ytd_total: string | null
+          status: string | null
+          notes: string | null
+          updated_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          programme: string
+          metric_key: string
+          annual_target?: string | null
+          q1_actual?: string | null
+          q2_actual?: string | null
+          q3_actual?: string | null
+          q4_actual?: string | null
+          ytd_total?: string | null
+          status?: string | null
+          notes?: string | null
+          updated_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          programme?: string
+          metric_key?: string
+          annual_target?: string | null
+          q1_actual?: string | null
+          q2_actual?: string | null
+          q3_actual?: string | null
+          q4_actual?: string | null
+          ytd_total?: string | null
+          status?: string | null
+          notes?: string | null
+          updated_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       staff_timesheet: {
         Row: {
           id: string
