@@ -15,6 +15,7 @@ import type { ProgrammeDefinition } from './programmeDefinitions'
 import type { Database } from '@/types/database'
 
 type ProgrammeMetricRow = Database['public']['Tables']['programme_metrics']['Row']
+type ProgrammeMetricInsert = Database['public']['Tables']['programme_metrics']['Insert']
 
 type Status = 'on_track' | 'needs_attention' | 'off_track' | 'no_data'
 
@@ -89,14 +90,15 @@ export function ProgrammeSection({ programme, savedRows, canEdit }: ProgrammeSec
   const save = useCallback(
     async (metricKey: string, patch: Partial<RowState>) => {
       const supabase = createClient()
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from('programme_metrics') as any).upsert(
-        {
-          programme: programme.id,
-          metric_key: metricKey,
-          ...patch,
-          updated_at: new Date().toISOString(),
-        },
+      const payload: ProgrammeMetricInsert = {
+        programme: programme.id,
+        metric_key: metricKey,
+        ...patch,
+        updated_at: new Date().toISOString(),
+      }
+
+      await supabase.from('programme_metrics').upsert(
+        payload,
         { onConflict: 'programme,metric_key' }
       )
     },

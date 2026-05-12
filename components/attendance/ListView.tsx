@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -73,11 +73,7 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  useEffect(() => {
-    loadAttendance()
-  }, [])
-
-  const loadAttendance = async () => {
+  const loadAttendance = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
     let query = supabase
@@ -104,7 +100,11 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
       setAttendance(data)
     }
     setLoading(false)
-  }
+  }, [allowedTeamIds])
+
+  useEffect(() => {
+    loadAttendance()
+  }, [loadAttendance])
 
   const activeDateRange = useMemo(() => {
     if (datePreset === 'custom') {
