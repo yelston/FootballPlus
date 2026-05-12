@@ -39,6 +39,27 @@ import { useToast } from '@/components/ui/toast'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 import { useIsMobile } from '@/lib/hooks/use-media-query'
 
+type HousePayload = {
+  name: string
+  description: string | null
+  updatedAt?: string
+}
+type HouseRecord = Omit<HouseWithCount, 'playerCount'>
+
+type HouseWriter = {
+  update: (values: HousePayload) => {
+    eq: (column: 'id', value: string) => Promise<{ error: { message: string } | null }>
+  }
+  insert: (values: HousePayload) => {
+    select: () => {
+      single: () => Promise<{ data: HouseRecord | null; error: { message: string } | null }>
+    }
+  }
+  delete: () => {
+    eq: (column: 'id', value: string) => Promise<{ error: { message: string } | null }>
+  }
+}
+
 export interface HouseWithCount {
   id: string
   name: string
@@ -81,10 +102,10 @@ export function HouseList({ initialHouses, canEdit }: HouseListProps) {
     }
 
     const supabase = createClient()
+    const housesTable = supabase.from('houses') as unknown as HouseWriter
 
     if (editingHouse) {
-      const { error: updateError } = await supabase
-        .from('houses')
+      const { error: updateError } = await housesTable
         .update({ name, description, updatedAt: new Date().toISOString() })
         .eq('id', editingHouse.id)
 
@@ -98,14 +119,18 @@ export function HouseList({ initialHouses, canEdit }: HouseListProps) {
       ))
       toast.success('House updated')
     } else {
-      const { data, error: insertError } = await supabase
-        .from('houses')
+      const { data, error: insertError } = await housesTable
         .insert({ name, description })
         .select()
-        .single() as { data: any; error: any }
+        .single()
 
       if (insertError) {
         setError(insertError.message)
+        setLoading(false)
+        return
+      }
+      if (!data) {
+        setError('House was created but no record was returned.')
         setLoading(false)
         return
       }
@@ -123,8 +148,8 @@ export function HouseList({ initialHouses, canEdit }: HouseListProps) {
     setLoading(true)
 
     const supabase = createClient()
-    const { error: deleteError } = await supabase
-      .from('houses')
+    const housesTable = supabase.from('houses') as unknown as HouseWriter
+    const { error: deleteError } = await housesTable
       .delete()
       .eq('id', deleteTarget.id)
 

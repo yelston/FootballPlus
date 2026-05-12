@@ -19,6 +19,24 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import type { PlayerNote } from '@/types/player'
 
+type PlayerNotePayload = {
+  playerId: string
+  date: string
+  notes: string
+  loggedByUserId: string
+  updatedAt: string
+}
+
+type PlayerNotesWriter = {
+  update: (values: PlayerNotePayload) => {
+    eq: (column: 'id', value: string) => Promise<{ error: { message: string } | null }>
+  }
+  insert: (values: PlayerNotePayload) => Promise<{ error: { message: string } | null }>
+  delete: () => {
+    eq: (column: 'id', value: string) => Promise<{ error: { message: string } | null }>
+  }
+}
+
 interface Props {
   notes: PlayerNote[]
   playerId: string
@@ -84,7 +102,7 @@ export function PlayerNoteLogs({ notes, playerId, canEdit }: Props) {
       updatedAt: new Date().toISOString(),
     }
 
-    const table = supabase.from('player_notes')
+    const table = supabase.from('player_notes') as unknown as PlayerNotesWriter
     const { error: err } = editing
       ? await table.update(payload).eq('id', editing.id)
       : await table.insert(payload)
@@ -100,7 +118,8 @@ export function PlayerNoteLogs({ notes, playerId, canEdit }: Props) {
     if (!deleteTarget) return
     setDeleting(true)
     const supabase = createClient()
-    await supabase.from('player_notes').delete().eq('id', deleteTarget.id)
+    const table = supabase.from('player_notes') as unknown as PlayerNotesWriter
+    await table.delete().eq('id', deleteTarget.id)
     setDeleting(false)
     setDeleteTarget(null)
     router.refresh()

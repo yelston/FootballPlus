@@ -16,6 +16,12 @@ import type { Database } from '@/types/database'
 
 type ProgrammeMetricRow = Database['public']['Tables']['programme_metrics']['Row']
 type ProgrammeMetricInsert = Database['public']['Tables']['programme_metrics']['Insert']
+type ProgrammeMetricsWriter = {
+  upsert: (
+    values: ProgrammeMetricInsert,
+    options: { onConflict: string }
+  ) => Promise<{ error: { message: string } | null }>
+}
 
 type Status = 'on_track' | 'needs_attention' | 'off_track' | 'no_data'
 
@@ -97,7 +103,9 @@ export function ProgrammeSection({ programme, savedRows, canEdit }: ProgrammeSec
         updated_at: new Date().toISOString(),
       }
 
-      await supabase.from('programme_metrics').upsert(
+      const programmeMetrics = supabase.from('programme_metrics') as unknown as ProgrammeMetricsWriter
+
+      await programmeMetrics.upsert(
         payload,
         { onConflict: 'programme,metric_key' }
       )
