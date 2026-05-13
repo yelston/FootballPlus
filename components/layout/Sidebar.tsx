@@ -18,6 +18,7 @@ import {
   Briefcase,
   Home,
   BarChart2,
+  BookOpen,
 } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,7 @@ const navigation = [
   { name: 'Reporting', href: '/reporting', icon: BarChart2, roles: ['admin', 'board'] },
   { name: 'Players', href: '/players', icon: UserCircle },
   { name: 'Attendance', href: '/attendance', icon: Calendar },
+  { name: 'Coaching', href: '/coaching', icon: BookOpen },
   { name: 'Staff', href: '/staff', icon: Briefcase, roles: ['admin', 'board'] },
   { name: 'FP Team', href: '/fp-team', icon: ShieldCheck, roles: ['admin'] },
   { name: 'Teams', href: '/teams', icon: UsersRound },

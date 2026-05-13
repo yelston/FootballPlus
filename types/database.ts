@@ -246,6 +246,7 @@ export interface Database {
         Row: {
           id: string
           name: string
+          category: 'Schools' | 'Academy' | null
           mainCoachId: string | null
           coachIds: string[]
           staffIds: string[]
@@ -256,6 +257,7 @@ export interface Database {
         Insert: {
           id?: string
           name: string
+          category?: 'Schools' | 'Academy' | null
           mainCoachId?: string | null
           coachIds?: string[]
           staffIds?: string[]
@@ -266,6 +268,7 @@ export interface Database {
         Update: {
           id?: string
           name?: string
+          category?: 'Schools' | 'Academy' | null
           mainCoachId?: string | null
           coachIds?: string[]
           staffIds?: string[]
@@ -564,6 +567,39 @@ export interface Database {
           month?: string | null
           notes?: string | null
           approved?: boolean
+          createdAt?: string
+          updatedAt?: string
+        }
+        Relationships: []
+      }
+      coaching_documents: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          fileUrl: string
+          filePath: string
+          uploadedBy: string | null
+          createdAt: string
+          updatedAt: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          fileUrl: string
+          filePath: string
+          uploadedBy?: string | null
+          createdAt?: string
+          updatedAt?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          fileUrl?: string
+          filePath?: string
+          uploadedBy?: string | null
           createdAt?: string
           updatedAt?: string
         }

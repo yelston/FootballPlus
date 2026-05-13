@@ -47,6 +47,7 @@ type TeamRow = Database['public']['Tables']['teams']['Row']
 interface Team {
   id: string
   name: string
+  category: 'Schools' | 'Academy' | null
   mainCoachId: string | null
   coachIds: string[]
   staffIds: string[]
@@ -81,6 +82,7 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; category?: string; mainCoachId?: string }>({ })
   const [selectedSupportTeamIds, setSelectedSupportTeamIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget] = useState<Team | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -98,23 +100,24 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setLoading(true)
     setError(null)
 
     const formData = new FormData(e.currentTarget)
     const name = (formData.get('name') as string)?.trim()
+    const category = (formData.get('category') as 'Schools' | 'Academy') || null
     const mainCoachId = formData.get('mainCoachId') as string
 
-    if (!name) {
-      setError('Team name is required.')
-      setLoading(false)
+    const errors: { name?: string; category?: string; mainCoachId?: string } = {}
+    if (!name) errors.name = 'Team name is required.'
+    if (!category) errors.category = 'Category is required.'
+    if (!mainCoachId) errors.mainCoachId = 'Main coach is required.'
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
       return
     }
-    if (!mainCoachId) {
-      setError('Main coach is required.')
-      setLoading(false)
-      return
-    }
+    setFieldErrors({})
+    setLoading(true)
 
     const coachIds = selectedSupportTeamIds
       .filter((id) => coaches.some((c) => c.id === id))
@@ -135,6 +138,7 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
         // @ts-ignore - Supabase type inference issue with update
         .update({
           name,
+          category,
           mainCoachId: mainCoachId || null,
           coachIds,
           staffIds,
@@ -154,6 +158,7 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
               ? {
                   ...t,
                   name,
+                  category,
                   mainCoachId: mainCoachId || null,
                   mainCoach,
                   coachIds,
@@ -176,6 +181,7 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
         // @ts-ignore - Supabase type inference issue with insert
         .insert({
           name,
+          category,
           mainCoachId: mainCoachId || null,
           coachIds,
           staffIds,
@@ -220,6 +226,7 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
     setEditingTeam(null)
     setSelectedSupportTeamIds([])
     setError(null)
+    setFieldErrors({})
   }
 
   const openDeleteDialog = (team: Team) => {
@@ -276,11 +283,30 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
           <input
             id="name"
             name="name"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ${fieldErrors.name ? 'border-destructive' : 'border-input'}`}
             defaultValue={editingTeam?.name}
-            required
             disabled={loading}
           />
+          {fieldErrors.name && (
+            <p className="text-xs text-destructive">{fieldErrors.name}</p>
+          )}
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="category">Category *</Label>
+          <Select
+            id="category"
+            name="category"
+            defaultValue={editingTeam?.category ?? ''}
+            disabled={loading}
+            className={fieldErrors.category ? 'border-destructive' : undefined}
+          >
+            <option value="">Select a category...</option>
+            <option value="Schools">Schools</option>
+            <option value="Academy">Academy</option>
+          </Select>
+          {fieldErrors.category && (
+            <p className="text-xs text-destructive">{fieldErrors.category}</p>
+          )}
         </div>
         <div className="grid gap-2">
           <Label htmlFor="mainCoachId">Main Coach *</Label>
@@ -288,8 +314,8 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
             id="mainCoachId"
             name="mainCoachId"
             defaultValue={editingTeam?.mainCoachId ?? ''}
-            required
             disabled={loading}
+            className={fieldErrors.mainCoachId ? 'border-destructive' : undefined}
           >
             <option value="">Select a main coach...</option>
             {coaches.map((coach) => (
@@ -298,6 +324,9 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
               </option>
             ))}
           </Select>
+          {fieldErrors.mainCoachId && (
+            <p className="text-xs text-destructive">{fieldErrors.mainCoachId}</p>
+          )}
         </div>
         <div className="grid gap-2">
           <Label>Support Team (Coaches, Staff & Volunteers)</Label>
@@ -414,6 +443,9 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
                     <Link href={`/teams/${team.id}`} className="font-semibold hover:underline">
                       {team.name}
                     </Link>
+                    {team.category && (
+                      <p className="text-sm text-muted-foreground">{team.category}</p>
+                    )}
                     <p className="text-sm text-muted-foreground truncate">
                       {team.mainCoach?.name || 'No main coach'}
                     </p>
@@ -469,6 +501,7 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Main Coach</TableHead>
                   <TableHead>Players</TableHead>
                   {(canEdit || canDelete) && <TableHead className="text-right">Actions</TableHead>}
@@ -484,6 +517,11 @@ export function TeamsList({ initialTeams, users, canEdit, canDelete }: TeamsList
                       >
                         {team.name}
                       </Link>
+                    </TableCell>
+                    <TableCell>
+                      {team.category || (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {team.mainCoach?.name || (
