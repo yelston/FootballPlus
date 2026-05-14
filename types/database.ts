@@ -105,6 +105,10 @@ export interface Database {
           literacyReadingImprovement: number | null
           literacySessionsAttended: number | null
           houseId: string | null
+          // Group 8: Stay In The Game
+          sitgPreSurveyScore: number | null
+          sitgPostSurveyScore: number | null
+          sitgSatisfactionRating: number | null
         }
         Insert: {
           id?: string
@@ -160,6 +164,9 @@ export interface Database {
           literacyReadingCurrent?: number | null
           literacySessionsAttended?: number | null
           houseId?: string | null
+          sitgPreSurveyScore?: number | null
+          sitgPostSurveyScore?: number | null
+          sitgSatisfactionRating?: number | null
         }
         Update: {
           id?: string
@@ -215,6 +222,9 @@ export interface Database {
           literacyReadingCurrent?: number | null
           literacySessionsAttended?: number | null
           houseId?: string | null
+          sitgPreSurveyScore?: number | null
+          sitgPostSurveyScore?: number | null
+          sitgSatisfactionRating?: number | null
         }
         Relationships: []
       }

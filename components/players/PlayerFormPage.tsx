@@ -248,6 +248,17 @@ export function PlayerFormPage({ mode, teams, positions, houses, player, initial
     player?.academicCurrent ?? null
   )
 
+  // Stay In The Game
+  const [sitgPreSurveyScore, setSitgPreSurveyScore] = useState<string>(
+    player?.sitgPreSurveyScore != null ? String(player.sitgPreSurveyScore) : ''
+  )
+  const [sitgPostSurveyScore, setSitgPostSurveyScore] = useState<string>(
+    player?.sitgPostSurveyScore != null ? String(player.sitgPostSurveyScore) : ''
+  )
+  const [sitgSatisfactionRating, setSitgSatisfactionRating] = useState<string>(
+    player?.sitgSatisfactionRating != null ? String(player.sitgSatisfactionRating) : ''
+  )
+
   // Literacy
   const [literacyEnrolled, setLiteracyEnrolled] = useState<boolean>(
     player?.literacyEnrolled || false
@@ -294,6 +305,17 @@ export function PlayerFormPage({ mode, teams, positions, houses, player, initial
     if (literacyReadingBaseline === null || literacyReadingCurrent === null) return null
     return literacyReadingCurrent - literacyReadingBaseline
   }, [literacyReadingBaseline, literacyReadingCurrent])
+
+  const sitgScoreChange = useMemo(() => {
+    const pre = sitgPreSurveyScore ? parseInt(sitgPreSurveyScore, 10) : NaN
+    const post = sitgPostSurveyScore ? parseInt(sitgPostSurveyScore, 10) : NaN
+    if (isNaN(pre) || isNaN(post)) return null
+    return post - pre
+  }, [sitgPreSurveyScore, sitgPostSurveyScore])
+
+  const isInSitgTeam = teams.some(
+    (t) => t.name === 'Stay In The Game' && selectedTeamIds.includes(t.id)
+  )
 
   const normalizePhone = (value: string) => {
     const digitsOnly = value.replace(/\D/g, '')
@@ -468,6 +490,10 @@ export function PlayerFormPage({ mode, teams, positions, houses, player, initial
         literacyReadingBaseline,
         literacyReadingCurrent,
         literacySessionsAttended: literacySessionsRaw ? Number(literacySessionsRaw) : null,
+        // Group 8: Stay In The Game
+        sitgPreSurveyScore: sitgPreSurveyScore ? Math.min(65, Math.max(1, parseInt(sitgPreSurveyScore, 10))) || null : null,
+        sitgPostSurveyScore: sitgPostSurveyScore ? Math.min(65, Math.max(1, parseInt(sitgPostSurveyScore, 10))) || null : null,
+        sitgSatisfactionRating: sitgSatisfactionRating ? Math.min(5, Math.max(1, parseInt(sitgSatisfactionRating, 10))) || null : null,
       }
 
       if (isEditing && player) {
@@ -556,6 +582,7 @@ export function PlayerFormPage({ mode, teams, positions, houses, player, initial
               <TabsTrigger value="progress">Progress</TabsTrigger>
               <TabsTrigger value="academics">Academics</TabsTrigger>
               <TabsTrigger value="literacy">Literacy</TabsTrigger>
+              <TabsTrigger value="stay-in-the-game">Stay In The Game</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
             </div>
@@ -1372,6 +1399,94 @@ export function PlayerFormPage({ mode, teams, positions, houses, player, initial
                   playerId={player.id}
                   canEdit={true}
                 />
+              </section>
+            )}
+          </TabsContent>
+
+          {/* ── Stay In The Game Tab ── */}
+          <TabsContent forceMount value="stay-in-the-game" className="space-y-6 data-[state=inactive]:hidden">
+            {!isInSitgTeam ? (
+              <section className="rounded-lg border p-4 md:p-5">
+                <h2 className="text-base font-semibold">Stay In The Game</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  This player is not enrolled in the Stay In The Game programme. Add them to the
+                  &quot;Stay In The Game&quot; team on the Profile tab to enable these fields.
+                </p>
+              </section>
+            ) : (
+              <section className="rounded-lg border p-4 md:p-5">
+                <h2 className="text-base font-semibold">Stay In The Game</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Score Change and Improvement Met are calculated automatically.
+                </p>
+                <div className="mt-4 space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="sitgPreSurveyScore">Pre-Survey Score (1–65)</Label>
+                      <Input
+                        id="sitgPreSurveyScore"
+                        type="number"
+                        min={1}
+                        max={65}
+                        placeholder="e.g. 30"
+                        value={sitgPreSurveyScore}
+                        onChange={(e) => setSitgPreSurveyScore(e.target.value)}
+                        disabled={loading}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="sitgPostSurveyScore">Post-Survey Score (1–65)</Label>
+                      <Input
+                        id="sitgPostSurveyScore"
+                        type="number"
+                        min={1}
+                        max={65}
+                        placeholder="e.g. 42"
+                        value={sitgPostSurveyScore}
+                        onChange={(e) => setSitgPostSurveyScore(e.target.value)}
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  {sitgScoreChange !== null && (
+                    <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2">
+                      <span className="text-sm font-medium">Score Change</span>
+                      <Badge
+                        variant={sitgScoreChange >= 8 ? 'default' : sitgScoreChange < 0 ? 'destructive' : 'secondary'}
+                        className="text-sm font-semibold"
+                      >
+                        {sitgScoreChange > 0 ? '+' : ''}{sitgScoreChange}
+                      </Badge>
+                    </div>
+                  )}
+
+                  {sitgScoreChange !== null && (
+                    <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2">
+                      <span className="text-sm font-medium">Improvement Met? (+8)</span>
+                      <Badge
+                        variant={sitgScoreChange >= 8 ? 'default' : 'secondary'}
+                        className="text-sm font-semibold"
+                      >
+                        {sitgScoreChange >= 8 ? 'Yes' : 'No'}
+                      </Badge>
+                    </div>
+                  )}
+
+                  <div className="grid gap-2 md:w-1/2">
+                    <Label htmlFor="sitgSatisfactionRating">Participant Satisfaction Rating (1–5)</Label>
+                    <Input
+                      id="sitgSatisfactionRating"
+                      type="number"
+                      min={1}
+                      max={5}
+                      placeholder="e.g. 4"
+                      value={sitgSatisfactionRating}
+                      onChange={(e) => setSitgSatisfactionRating(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
               </section>
             )}
           </TabsContent>

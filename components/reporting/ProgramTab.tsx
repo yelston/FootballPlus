@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ProgrammeSection } from './ProgrammeSection'
 import { PROGRAMME_DEFINITIONS } from './programmeDefinitions'
 import type { RowState } from './ProgrammeSection'
+import type { ComputedActuals } from '@/lib/reportingComputed'
 import type { Database } from '@/types/database'
 
 type ProgrammeMetricRow = Database['public']['Tables']['programme_metrics']['Row']
@@ -24,17 +25,24 @@ interface ProgramTabProps {
   metrics: ProgrammeMetricRow[]
   canEdit: boolean
   onDirtyChange: (isDirty: boolean) => void
+  computedActuals: ComputedActuals
 }
 
-function buildInitialState(metricKey: string, savedRows: ProgrammeMetricRow[]): RowState {
+function buildInitialState(
+  programmeId: string,
+  metricKey: string,
+  savedRows: ProgrammeMetricRow[],
+  computedActuals: ComputedActuals,
+): RowState {
   const saved = savedRows.find((r) => r.metric_key === metricKey)
+  const computed = computedActuals[programmeId]?.[metricKey]
   return {
     annual_target: saved?.annual_target ?? '',
-    q1_actual: saved?.q1_actual ?? '',
-    q2_actual: saved?.q2_actual ?? '',
-    q3_actual: saved?.q3_actual ?? '',
-    q4_actual: saved?.q4_actual ?? '',
-    ytd_total: saved?.ytd_total ?? '',
+    q1_actual: computed?.q1 ?? saved?.q1_actual ?? '',
+    q2_actual: computed?.q2 ?? saved?.q2_actual ?? '',
+    q3_actual: computed?.q3 ?? saved?.q3_actual ?? '',
+    q4_actual: computed?.q4 ?? saved?.q4_actual ?? '',
+    ytd_total: computed?.ytd ?? saved?.ytd_total ?? '',
     status: saved?.status ?? '',
     notes: saved?.notes ?? '',
   }
@@ -43,14 +51,14 @@ function buildInitialState(metricKey: string, savedRows: ProgrammeMetricRow[]): 
 type AllRowStates = Record<string, Record<string, RowState>>
 
 export const ProgramTab = forwardRef<ProgramTabHandle, ProgramTabProps>(
-  function ProgramTab({ metrics, canEdit, onDirtyChange }, ref) {
+  function ProgramTab({ metrics, canEdit, onDirtyChange, computedActuals }, ref) {
     const [allRowStates, setAllRowStates] = useState<AllRowStates>(() => {
       const initial: AllRowStates = {}
       for (const programme of PROGRAMME_DEFINITIONS) {
         initial[programme.id] = {}
         for (const metric of programme.metrics) {
           const savedRows = metrics.filter((m) => m.programme === programme.id)
-          initial[programme.id][metric.key] = buildInitialState(metric.key, savedRows)
+          initial[programme.id][metric.key] = buildInitialState(programme.id, metric.key, savedRows, computedActuals)
         }
       }
       return initial
@@ -79,10 +87,19 @@ export const ProgramTab = forwardRef<ProgramTabHandle, ProgramTabProps>(
         await Promise.all(
           PROGRAMME_DEFINITIONS.flatMap((programme) =>
             programme.metrics.map((metric) => {
+              const rowState = allRowStates[programme.id][metric.key]
+              const computed = new Set(metric.computedFields ?? [])
               const payload: ProgrammeMetricInsert = {
                 programme: programme.id,
                 metric_key: metric.key,
-                ...allRowStates[programme.id][metric.key],
+                annual_target: rowState.annual_target,
+                q1_actual: computed.has('q1_actual') ? undefined : rowState.q1_actual,
+                q2_actual: computed.has('q2_actual') ? undefined : rowState.q2_actual,
+                q3_actual: computed.has('q3_actual') ? undefined : rowState.q3_actual,
+                q4_actual: computed.has('q4_actual') ? undefined : rowState.q4_actual,
+                ytd_total: computed.has('ytd_total') ? undefined : rowState.ytd_total,
+                status: rowState.status,
+                notes: rowState.notes,
                 updated_at: now,
               }
               return programmeMetrics.upsert(payload, { onConflict: 'programme,metric_key' })

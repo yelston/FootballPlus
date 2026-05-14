@@ -102,11 +102,19 @@ export function CostEngineDialog({
 
   const handleSubmit = useCallback(async () => {
     if (!monthlyGrossPay) {
-      setError('Please enter Monthly Gross Pay')
+      setError('Monthly Gross Pay is required')
+      return
+    }
+    if (employerCpfPercent === '') {
+      setError('Employer CPF % is required')
+      return
+    }
+    if (otherMonthlyCost === '') {
+      setError('Other Monthly Cost is required')
       return
     }
     if (!monthlyCapacityHours) {
-      setError('Please enter Monthly Capacity Hours')
+      setError('Monthly Capacity Hours is required')
       return
     }
 
@@ -232,7 +240,7 @@ export function CostEngineDialog({
         {/* Monthly Gross Pay | Employer CPF % | Other Monthly Cost */}
         <div className="grid grid-cols-3 gap-3">
           <div className="grid gap-2">
-            <Label htmlFor="monthlyGrossPay">Monthly Gross Pay (SGD)</Label>
+            <Label htmlFor="monthlyGrossPay">Monthly Gross Pay (SGD) <span className="text-destructive">*</span></Label>
             <Input
               id="monthlyGrossPay"
               type="number"
@@ -244,7 +252,7 @@ export function CostEngineDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="employerCpfPercent">Employer CPF %</Label>
+            <Label htmlFor="employerCpfPercent">Employer CPF % <span className="text-destructive">*</span></Label>
             <Input
               id="employerCpfPercent"
               type="number"
@@ -257,7 +265,7 @@ export function CostEngineDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="otherMonthlyCost">Other Monthly Cost</Label>
+            <Label htmlFor="otherMonthlyCost">Other Monthly Cost <span className="text-destructive">*</span></Label>
             <Input
               id="otherMonthlyCost"
               type="number"
@@ -268,6 +276,20 @@ export function CostEngineDialog({
               disabled={loading}
             />
           </div>
+        </div>
+
+        {/* Monthly Capacity Hours */}
+        <div className="grid gap-2">
+          <Label htmlFor="monthlyCapacityHours">Monthly Capacity Hours <span className="text-destructive">*</span></Label>
+          <Input
+            id="monthlyCapacityHours"
+            type="number"
+            min="0"
+            step="0.5"
+            value={monthlyCapacityHours}
+            onChange={(e) => setMonthlyCapacityHours(e.target.value)}
+            disabled={loading}
+          />
         </div>
 
         {/* All In Monthly Cost | Blended Hourly Cost (auto-populated) */}
@@ -326,20 +348,6 @@ export function CostEngineDialog({
                 : '—'}
             </p>
           </div>
-        </div>
-
-        {/* Monthly Capacity Hours */}
-        <div className="grid gap-2">
-          <Label htmlFor="monthlyCapacityHours">Monthly Capacity Hours</Label>
-          <Input
-            id="monthlyCapacityHours"
-            type="number"
-            min="0"
-            step="0.5"
-            value={monthlyCapacityHours}
-            onChange={(e) => setMonthlyCapacityHours(e.target.value)}
-            disabled={loading}
-          />
         </div>
 
         {/* Notes */}

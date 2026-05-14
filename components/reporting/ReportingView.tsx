@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ProgramTab } from './ProgramTab'
 import { LiteracyTab } from './LiteracyTab'
 import type { ProgramTabHandle } from './ProgramTab'
+import type { ComputedActuals } from '@/lib/reportingComputed'
 import type { Database } from '@/types/database'
 
 type ProgrammeMetricRow = Database['public']['Tables']['programme_metrics']['Row']
@@ -29,9 +30,10 @@ interface ReportingViewProps {
   canEdit: boolean
   players: PlayerLiteracyRow[]
   literacySessions: LiteracySessionRow[]
+  computedActuals: ComputedActuals
 }
 
-export function ReportingView({ metrics, canEdit, players, literacySessions }: ReportingViewProps) {
+export function ReportingView({ metrics, canEdit, players, literacySessions, computedActuals }: ReportingViewProps) {
   const [activeTab, setActiveTab] = useState('program')
   const [isDirty, setIsDirty] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -46,8 +48,12 @@ export function ReportingView({ metrics, canEdit, players, literacySessions }: R
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full min-w-0 overflow-hidden">
-      {canEdit && activeTab === 'program' && (
-        <div className="mb-2 flex justify-end lg:mb-4">
+      <div className="mb-3 flex items-end justify-between lg:mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Reporting</h1>
+          <p className="text-muted-foreground">Quarterly impact summary across all programmes</p>
+        </div>
+        {canEdit && activeTab === 'program' && (
           <Button
             size="sm"
             className="shrink-0"
@@ -58,8 +64,8 @@ export function ReportingView({ metrics, canEdit, players, literacySessions }: R
             {saveState === 'saved' && <Check className="mr-1.5 h-4 w-4" />}
             {saveState === 'saved' ? 'Saved' : 'Save'}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
       <TabsList className="grid h-auto w-full min-w-0 grid-cols-4 overflow-hidden lg:h-10">
         <TabsTrigger value="program" className="min-w-0 truncate px-2 sm:px-3">
           Program
@@ -76,7 +82,7 @@ export function ReportingView({ metrics, canEdit, players, literacySessions }: R
       </TabsList>
 
       <TabsContent value="program" className="mt-2 lg:mt-6">
-        <ProgramTab ref={programTabRef} metrics={metrics} canEdit={canEdit} onDirtyChange={setIsDirty} />
+        <ProgramTab ref={programTabRef} metrics={metrics} canEdit={canEdit} onDirtyChange={setIsDirty} computedActuals={computedActuals} />
       </TabsContent>
 
       <TabsContent value="staff" className="mt-2 lg:mt-6">

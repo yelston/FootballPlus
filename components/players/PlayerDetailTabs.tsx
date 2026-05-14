@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { LiteracySessionLogs } from '@/components/players/LiteracySessionLogs'
 import { PlayerNoteLogs } from '@/components/players/PlayerNoteLogs'
+import { StayInTheGameTab } from '@/components/players/StayInTheGameTab'
 import type { PlayerDetailViewModel } from '@/types/player'
 
 function StatRow({ label, value }: { label: string; value: string }) {
@@ -177,6 +178,7 @@ export function PlayerDetailTabs({ viewModel, age, canViewSensitive, canEdit, st
           <TabsTrigger value="progress">Progress</TabsTrigger>
           <TabsTrigger value="academics">Academics</TabsTrigger>
           <TabsTrigger value="literacy">Literacy</TabsTrigger>
+          <TabsTrigger value="stay-in-the-game">Stay In The Game</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
         </TabsList>
           </div>
@@ -648,6 +650,11 @@ export function PlayerDetailTabs({ viewModel, age, canViewSensitive, canEdit, st
             />
           </CardContent>
         </Card>
+      </TabsContent>
+
+      {/* ── Stay In The Game Tab ── */}
+      <TabsContent value="stay-in-the-game">
+        <StayInTheGameTab viewModel={viewModel} />
       </TabsContent>
 
       {/* ── Notes Tab ── */}
