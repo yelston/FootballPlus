@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -109,6 +110,20 @@ export function Sidebar({ userRole }: SidebarProps) {
     }))
     .filter((group) => group.items.length > 0)
 
+  const activeGroupLabels = navigationGroupsForRole
+    .filter((group) =>
+      group.items.some((item) =>
+        pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href))
+      )
+    )
+    .map((group) => group.label)
+
+  const defaultOpenGroups = activeGroupLabels.length > 0
+    ? activeGroupLabels
+    : navigationGroupsForRole.map((group) => group.label)
+
+  const visibleNavigationItems = navigationGroupsForRole.flatMap((group) => group.items)
+
   return (
     <>
       {/* Mobile sidebar overlay */}
@@ -158,41 +173,72 @@ export function Sidebar({ userRole }: SidebarProps) {
 
           {/* Nav */}
           <nav className={cn('flex-1 py-4', isCollapsed ? 'space-y-1 px-2' : 'space-y-5 px-3')}>
-            {navigationGroupsForRole.map((group) => (
-              <div key={group.label} className="space-y-1">
-                {!isCollapsed && (
-                  <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    {group.label}
-                  </div>
-                )}
-                {group.items.map((item) => {
-                  const Icon = item.icon
-                  const isActive = pathname === item.href ||
-                    (item.href !== '/' && pathname?.startsWith(item.href))
+            {isCollapsed ? (
+              visibleNavigationItems.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href ||
+                  (item.href !== '/' && pathname?.startsWith(item.href))
 
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setIsOpen(false)}
-                      onMouseEnter={() => handlePrefetch(item.href)}
-                      onFocus={() => handlePrefetch(item.href)}
-                      title={isCollapsed ? item.name : undefined}
-                      className={cn(
-                        'flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                        isCollapsed ? 'justify-center gap-0' : 'gap-3',
-                        isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                      )}
-                    >
-                      <Icon className="h-5 w-5 shrink-0" />
-                      {!isCollapsed && item.name}
-                    </Link>
-                  )
-                })}
-              </div>
-            ))}
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    onMouseEnter={() => handlePrefetch(item.href)}
+                    onFocus={() => handlePrefetch(item.href)}
+                    title={item.name}
+                    className={cn(
+                      'flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors justify-center gap-0',
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    )}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                  </Link>
+                )
+              })
+            ) : (
+              <Accordion
+                type="multiple"
+                defaultValue={defaultOpenGroups}
+                className="space-y-2"
+              >
+                {navigationGroupsForRole.map((group) => (
+                  <AccordionItem key={group.label} value={group.label} className="border-b-0">
+                    <AccordionTrigger className="rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 hover:bg-accent hover:text-accent-foreground hover:no-underline">
+                      {group.label}
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-1 pb-1 pt-1">
+                      {group.items.map((item) => {
+                        const Icon = item.icon
+                        const isActive = pathname === item.href ||
+                          (item.href !== '/' && pathname?.startsWith(item.href))
+
+                        return (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            onClick={() => setIsOpen(false)}
+                            onMouseEnter={() => handlePrefetch(item.href)}
+                            onFocus={() => handlePrefetch(item.href)}
+                            className={cn(
+                              'flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors gap-3',
+                              isActive
+                                ? 'bg-primary text-primary-foreground'
+                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                            )}
+                          >
+                            <Icon className="h-5 w-5 shrink-0" />
+                            {item.name}
+                          </Link>
+                        )
+                      })}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
           </nav>
 
           {/* Bottom section */}
