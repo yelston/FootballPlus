@@ -17,6 +17,8 @@ import { useToast } from '@/components/ui/toast'
 import type { Database } from '@/types/database'
 
 type CoachingDocument = Database['public']['Tables']['coaching_documents']['Row']
+type CoachingDocumentInsert = Database['public']['Tables']['coaching_documents']['Insert']
+type CoachingDocumentUpdate = Database['public']['Tables']['coaching_documents']['Update']
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
 
@@ -114,16 +116,30 @@ export function UploadDialog({ open, onOpenChange, editingDocument, onSuccess }:
       }
 
       if (isEditing) {
+        const updatePayload: CoachingDocumentUpdate = {
+          name: trimmedName,
+          description: description.trim() || null,
+          fileUrl,
+          filePath,
+          updatedAt: new Date().toISOString(),
+        }
         const { error } = await supabase
           .from('coaching_documents')
-          .update({ name: trimmedName, description: description.trim() || null, fileUrl, filePath, updatedAt: new Date().toISOString() })
+          .update(updatePayload as never)
           .eq('id', editingDocument.id)
         if (error) throw error
       } else {
         const { data: { user } } = await supabase.auth.getUser()
+        const insertPayload: CoachingDocumentInsert = {
+          name: trimmedName,
+          description: description.trim() || null,
+          fileUrl,
+          filePath,
+          uploadedBy: user?.id ?? null,
+        }
         const { error } = await supabase
           .from('coaching_documents')
-          .insert({ name: trimmedName, description: description.trim() || null, fileUrl, filePath, uploadedBy: user?.id ?? null })
+          .insert(insertPayload as never)
         if (error) throw error
       }
 

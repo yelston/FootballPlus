@@ -5,6 +5,7 @@ import type { Database } from '@/types/database'
 import { redirect } from 'next/navigation'
 
 type CoachingDocumentRow = Database['public']['Tables']['coaching_documents']['Row']
+type UserNameRow = Pick<Database['public']['Tables']['users']['Row'], 'id' | 'name'>
 
 export default async function CoachingPage() {
   const user = await getCurrentUser()
@@ -21,7 +22,8 @@ export default async function CoachingPage() {
       .returns<CoachingDocumentRow[]>(),
     supabase
       .from('users')
-      .select('id, name'),
+      .select('id, name')
+      .returns<UserNameRow[]>(),
   ])
 
   const userMap = Object.fromEntries((users ?? []).map((u) => [u.id, u.name]))

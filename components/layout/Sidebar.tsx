@@ -19,6 +19,7 @@ import {
   Home,
   BarChart2,
   BookOpen,
+  type LucideIcon,
 } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
 import { Button } from '@/components/ui/button'
@@ -26,7 +27,19 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { UserRole } from '@/lib/auth'
 
-const navigationGroups = [
+interface NavigationItem {
+  name: string
+  href: string
+  icon: LucideIcon
+  roles?: UserRole[]
+}
+
+interface NavigationGroup {
+  label: string
+  items: NavigationItem[]
+}
+
+const navigationGroups: NavigationGroup[] = [
   {
     label: 'Main',
     items: [
