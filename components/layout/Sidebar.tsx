@@ -26,17 +26,37 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { UserRole } from '@/lib/auth'
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Reporting', href: '/reporting', icon: BarChart2, roles: ['admin', 'board'] },
-  { name: 'Players', href: '/players', icon: UserCircle },
-  { name: 'Attendance', href: '/attendance', icon: Calendar },
-  { name: 'Coaching', href: '/coaching', icon: BookOpen },
-  { name: 'Staff', href: '/staff', icon: Briefcase, roles: ['admin', 'board'] },
-  { name: 'FP Team', href: '/fp-team', icon: ShieldCheck, roles: ['admin'] },
-  { name: 'Teams', href: '/teams', icon: UsersRound },
-  { name: 'Positions', href: '/positions', icon: LayoutList },
-  { name: 'Houses', href: '/house', icon: Home },
+const navigationGroups = [
+  {
+    label: 'Main',
+    items: [
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+      { name: 'Players', href: '/players', icon: UserCircle },
+      { name: 'Attendance', href: '/attendance', icon: Calendar },
+      { name: 'Coaching', href: '/coaching', icon: BookOpen },
+    ],
+  },
+  {
+    label: 'Insights',
+    items: [
+      { name: 'Reporting', href: '/reporting', icon: BarChart2, roles: ['admin', 'board'] },
+    ],
+  },
+  {
+    label: 'People & Operations',
+    items: [
+      { name: 'Staff', href: '/staff', icon: Briefcase, roles: ['admin', 'board'] },
+      { name: 'FP Team', href: '/fp-team', icon: ShieldCheck, roles: ['admin'] },
+    ],
+  },
+  {
+    label: 'Setup',
+    items: [
+      { name: 'Teams', href: '/teams', icon: UsersRound },
+      { name: 'Positions', href: '/positions', icon: LayoutList },
+      { name: 'Houses', href: '/house', icon: Home },
+    ],
+  },
 ]
 
 interface SidebarProps {
@@ -64,12 +84,17 @@ export function Sidebar({ userRole }: SidebarProps) {
     router.prefetch(href)
   }
 
-  const filteredNavigation = navigation.filter((item) => {
-    if (item.roles && !item.roles.includes(userRole)) {
-      return false
-    }
-    return true
-  })
+  const navigationGroupsForRole = navigationGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (item.roles && !item.roles.includes(userRole)) {
+          return false
+        }
+        return true
+      }),
+    }))
+    .filter((group) => group.items.length > 0)
 
   return (
     <>
@@ -119,33 +144,42 @@ export function Sidebar({ userRole }: SidebarProps) {
           </div>
 
           {/* Nav */}
-          <nav className={cn('flex-1 space-y-1 py-4', isCollapsed ? 'px-2' : 'px-3')}>
-            {filteredNavigation.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href ||
-                (item.href !== '/' && pathname?.startsWith(item.href))
+          <nav className={cn('flex-1 py-4', isCollapsed ? 'space-y-1 px-2' : 'space-y-5 px-3')}>
+            {navigationGroupsForRole.map((group) => (
+              <div key={group.label} className="space-y-1">
+                {!isCollapsed && (
+                  <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {group.label}
+                  </div>
+                )}
+                {group.items.map((item) => {
+                  const Icon = item.icon
+                  const isActive = pathname === item.href ||
+                    (item.href !== '/' && pathname?.startsWith(item.href))
 
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setIsOpen(false)}
-                  onMouseEnter={() => handlePrefetch(item.href)}
-                  onFocus={() => handlePrefetch(item.href)}
-                  title={isCollapsed ? item.name : undefined}
-                  className={cn(
-                    'flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isCollapsed ? 'justify-center gap-0' : 'gap-3',
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  )}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  {!isCollapsed && item.name}
-                </Link>
-              )
-            })}
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => setIsOpen(false)}
+                      onMouseEnter={() => handlePrefetch(item.href)}
+                      onFocus={() => handlePrefetch(item.href)}
+                      title={isCollapsed ? item.name : undefined}
+                      className={cn(
+                        'flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        isCollapsed ? 'justify-center gap-0' : 'gap-3',
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" />
+                      {!isCollapsed && item.name}
+                    </Link>
+                  )
+                })}
+              </div>
+            ))}
           </nav>
 
           {/* Bottom section */}
