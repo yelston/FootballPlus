@@ -6,7 +6,6 @@ import type { Database } from '@/types/database'
 
 type PlayerRow = Database['public']['Tables']['players']['Row']
 type TeamRow = Database['public']['Tables']['teams']['Row']
-type PositionRow = Database['public']['Tables']['positions']['Row']
 type PlayerTeamEntry = { teamId: string; teams: { id: string; name: string } | null }
 type PlayerWithTeams = PlayerRow & { player_teams: PlayerTeamEntry[] }
 
@@ -20,21 +19,14 @@ export default async function PlayersPage() {
   const supabase = createClient()
   const isUnrestricted = user.role === 'admin' || user.role === 'board'
 
-  const [{ data: allTeams }, { data: positions }] = await Promise.all([
-    supabase
-      .from('teams')
-      .select('id, name')
-      .order('name')
-      .returns<Pick<TeamRow, 'id' | 'name'>[]>(),
-    supabase
-      .from('positions')
-      .select('id, name')
-      .order('sortOrder', { ascending: true })
-      .returns<Pick<PositionRow, 'id' | 'name'>[]>(),
-  ])
+  const { data: allTeams } = await supabase
+    .from('teams')
+    .select('id, name, category')
+    .order('name')
+    .returns<Pick<TeamRow, 'id' | 'name' | 'category'>[]>()
 
   let players: PlayerWithTeams[] = []
-  let teams: Pick<TeamRow, 'id' | 'name'>[] = allTeams || []
+  let teams: Pick<TeamRow, 'id' | 'name' | 'category'>[] = allTeams || []
 
   if (isUnrestricted) {
     const { data } = await supabase
@@ -45,7 +37,7 @@ export default async function PlayersPage() {
     players = data || []
   } else {
     const assignedTeamIds = await getUserAssignedTeamIds(user.id)
-    teams = (allTeams || []).filter((t) => assignedTeamIds.includes(t.id))
+    teams = (allTeams || []).filter((t: Pick<TeamRow, 'id' | 'name' | 'category'>) => assignedTeamIds.includes(t.id))
 
     if (assignedTeamIds.length > 0) {
       const { data: playerTeamRows } = await supabase
@@ -79,7 +71,6 @@ export default async function PlayersPage() {
       <PlayersList
         initialPlayers={players}
         teams={teams}
-        positions={positions || []}
         canEdit={user.role === 'admin' || user.role === 'coach' || user.role === 'staff'}
       />
     </div>
