@@ -147,13 +147,13 @@ function IndexTable({ title, subtitle, ageGroups, minAge, players, metric, hideN
             <p className="text-sm text-muted-foreground py-4 text-center">No players in the applicable age range.</p>
           ) : (
             <div className="overflow-x-auto rounded-md border">
-              <table className="w-full text-xs border-collapse">
+              <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-muted">
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap border-b">Age</th>
                     {RATING_LABELS.map((label, i) => (
                       <th key={i} className="px-3 py-2 text-center font-medium text-muted-foreground whitespace-nowrap border-b">
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${RATING_COLORS[i]}`}>
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-semibold ${RATING_COLORS[i]}`}>
                           {i + 1}
                         </span>
                         <span className="ml-1">{label}</span>
@@ -314,20 +314,20 @@ export function PlayersIndexTab({ players, playerTeamLinks, teams }: PlayersInde
             {RATING_LABELS.map((label, i) => (
               <span
                 key={i}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${RATING_COLORS[i]}`}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium ${RATING_COLORS[i]}`}
               >
                 <span className="font-bold">{i + 1}</span>
                 <span>{label}</span>
               </span>
             ))}
-            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-muted text-muted-foreground">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-muted text-muted-foreground">
               No Data
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Each cell shows the number of current players in that age group and performance band. Ratings 1–5 are assigned by coaches and mapped against the normative benchmarks below each table title. Players with no recorded score appear in the No Data column.
           </p>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <span>Juggling: ages 5–15+</span>
             <span>30m Sprint: ages 6–15+</span>
             <span>Yo-Yo: ages 12–15+</span>
