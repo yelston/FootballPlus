@@ -107,6 +107,11 @@ export interface Database {
           houseId: string | null
           // Group 8: Stay In The Game
           sitgPreSurveyScore: number | null
+          // Address
+          address: string | null
+          postal: string | null
+          city: string | null
+          country: string | null
           sitgPostSurveyScore: number | null
           sitgSatisfactionRating: number | null
         }
@@ -167,6 +172,10 @@ export interface Database {
           sitgPreSurveyScore?: number | null
           sitgPostSurveyScore?: number | null
           sitgSatisfactionRating?: number | null
+          address?: string | null
+          postal?: string | null
+          city?: string | null
+          country?: string | null
         }
         Update: {
           id?: string
@@ -225,6 +234,10 @@ export interface Database {
           sitgPreSurveyScore?: number | null
           sitgPostSurveyScore?: number | null
           sitgSatisfactionRating?: number | null
+          address?: string | null
+          postal?: string | null
+          city?: string | null
+          country?: string | null
         }
         Relationships: []
       }
@@ -612,6 +625,39 @@ export interface Database {
           uploadedBy?: string | null
           createdAt?: string
           updatedAt?: string
+        }
+        Relationships: []
+      }
+      teams_log: {
+        Row: {
+          id: string
+          date: string
+          team_id: string
+          title: string
+          details: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          date: string
+          team_id: string
+          title: string
+          details?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          date?: string
+          team_id?: string
+          title?: string
+          details?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }

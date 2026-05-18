@@ -437,6 +437,10 @@ export function PlayerFormPage({ mode, teams, positions, houses, player, initial
         positions: selectedPositions,
         profileImageUrl,
         contactNumber: String(formData.get('contactNumber') || '').trim() || null,
+        address: String(formData.get('address') || '').trim() || null,
+        postal: String(formData.get('postal') || '').trim() || null,
+        city: String(formData.get('city') || '').trim() || null,
+        country: String(formData.get('country') || '').trim() || null,
         guardianName: String(formData.get('guardianName') || '').trim() || null,
         guardianRelationship: String(formData.get('guardianRelationship') || '').trim() || null,
         guardianPhone: String(formData.get('guardianPhone') || '').trim() || null,
@@ -864,6 +868,46 @@ export function PlayerFormPage({ mode, teams, positions, houses, player, initial
                     placeholder="e.g. +1234567890"
                     value={contactNumber}
                     onChange={(e) => handlePhoneChange(setContactNumber, e)}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="grid gap-2 md:col-span-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    defaultValue={player?.address || ''}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="postal">Postal Code</Label>
+                  <Input
+                    id="postal"
+                    name="postal"
+                    defaultValue={player?.postal || ''}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    name="city"
+                    defaultValue={player?.city || ''}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    name="country"
+                    defaultValue={player?.country || ''}
                     disabled={loading}
                   />
                 </div>

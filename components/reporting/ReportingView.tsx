@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ProgramTab } from './ProgramTab'
 import { LiteracyTab } from './LiteracyTab'
+import { PlayersIndexTab } from './PlayersIndexTab'
 import type { ProgramTabHandle } from './ProgramTab'
+import type { TechnicalPlayer, PlayerTeamLink, IndexTeam } from './PlayersIndexTab'
 import type { ComputedActuals } from '@/lib/reportingComputed'
 import type { Database } from '@/types/database'
 
@@ -31,9 +33,12 @@ interface ReportingViewProps {
   players: PlayerLiteracyRow[]
   literacySessions: LiteracySessionRow[]
   computedActuals: ComputedActuals
+  teams: IndexTeam[]
+  playerTeamLinks: PlayerTeamLink[]
+  technicalPlayers: TechnicalPlayer[]
 }
 
-export function ReportingView({ metrics, canEdit, players, literacySessions, computedActuals }: ReportingViewProps) {
+export function ReportingView({ metrics, canEdit, players, literacySessions, computedActuals, teams, playerTeamLinks, technicalPlayers }: ReportingViewProps) {
   const [activeTab, setActiveTab] = useState('program')
   const [isDirty, setIsDirty] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -66,9 +71,12 @@ export function ReportingView({ metrics, canEdit, players, literacySessions, com
           </Button>
         )}
       </div>
-      <TabsList className="grid h-auto w-full min-w-0 grid-cols-4 overflow-hidden lg:h-10">
+      <TabsList className="grid h-auto w-full min-w-0 grid-cols-5 overflow-hidden lg:h-10">
         <TabsTrigger value="program" className="min-w-0 truncate px-2 sm:px-3">
           Program
+        </TabsTrigger>
+        <TabsTrigger value="players-index" className="min-w-0 truncate px-2 sm:px-3">
+          Players Index
         </TabsTrigger>
         <TabsTrigger value="staff" className="min-w-0 truncate px-2 sm:px-3">
           Staff
@@ -83,6 +91,10 @@ export function ReportingView({ metrics, canEdit, players, literacySessions, com
 
       <TabsContent value="program" className="mt-2 lg:mt-6">
         <ProgramTab ref={programTabRef} metrics={metrics} canEdit={canEdit} onDirtyChange={setIsDirty} computedActuals={computedActuals} />
+      </TabsContent>
+
+      <TabsContent value="players-index" className="mt-2 lg:mt-6">
+        <PlayersIndexTab players={technicalPlayers} playerTeamLinks={playerTeamLinks} teams={teams} />
       </TabsContent>
 
       <TabsContent value="staff" className="mt-2 lg:mt-6">

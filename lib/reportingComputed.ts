@@ -66,7 +66,7 @@ function computeSessionMetrics(
   period: QuarterKey | null,
 ): { sessions: number; avgPct: string; totalAttendances: number; distinctPlayers: number } {
   const teamAttendance = attendance.filter(
-    (a) => a.teamId !== null && teamIds.has(a.teamId) && a.points > 0,
+    (a) => a.teamId !== null && teamIds.has(a.teamId),
   )
   const filtered = period
     ? teamAttendance.filter((a) => getQuarter(a.date) === period)
@@ -131,7 +131,7 @@ export function computeProgrammeActuals(
 
     // participants_completing — YTD only (≥6 sessions across the year)
     const sitgAttendance = attendance.filter(
-      (a) => a.teamId !== null && sitgIds.has(a.teamId) && a.points > 0,
+      (a) => a.teamId !== null && sitgIds.has(a.teamId),
     )
     const sessionsByPlayer = new Map<string, number>()
     for (const a of sitgAttendance) {
@@ -246,7 +246,7 @@ export function computeProgrammeActuals(
 
     for (const q of ['q1', 'q2', 'q3', 'q4'] as QuarterKey[]) {
       const schoolAtt = attendance.filter(
-        (a) => a.teamId !== null && schoolIds.has(a.teamId) && a.points > 0 && getQuarter(a.date) === q,
+        (a) => a.teamId !== null && schoolIds.has(a.teamId) && getQuarter(a.date) === q,
       )
       const sessionDates = new Set(schoolAtt.map((a) => a.date))
       const distinctStudents = new Set(schoolAtt.map((a) => a.playerId))
@@ -272,7 +272,7 @@ export function computeProgrammeActuals(
     result[prog]['sessions_delivered_pct']!['ytd'] = '0%'
 
     const ytdSchoolAtt = attendance.filter(
-      (a) => a.teamId !== null && schoolIds.has(a.teamId) && a.points > 0,
+      (a) => a.teamId !== null && schoolIds.has(a.teamId),
     )
     result[prog]['sessions_delivered']['ytd'] = fmt(ytdSessions)
     result[prog]['total_students_reached']['ytd'] = fmt(ytdStudents.size)

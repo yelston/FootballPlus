@@ -18,6 +18,10 @@ type PlayerLiteracyRow = Pick<
   | 'literacySessionsAttended'
 >
 type LiteracySessionRow = Database['public']['Tables']['literacy_sessions']['Row']
+type TechnicalPlayerRow = Pick<
+  Database['public']['Tables']['players']['Row'],
+  'id' | 'dob' | 'technicalSprint' | 'technicalDribbling' | 'technicalJuggling' | 'technicalYoyo'
+>
 
 interface TeamRow { id: string; name: string; category: string | null }
 interface PlayerTeamRow {
@@ -51,6 +55,7 @@ export default async function ReportingPage() {
     { data: teams },
     { data: playerTeams },
     { data: attendance },
+    { data: technicalPlayers },
   ] = await Promise.all([
     supabase.from('programme_metrics').select('*').returns<ProgrammeMetricRow[]>(),
     supabase
@@ -77,6 +82,10 @@ export default async function ReportingPage() {
       .gte('date', `${year}-01-01`)
       .lte('date', `${year}-12-31`)
       .returns<AttendanceRow[]>(),
+    supabase
+      .from('players')
+      .select('id, dob, technicalSprint, technicalDribbling, technicalJuggling, technicalYoyo')
+      .returns<TechnicalPlayerRow[]>(),
   ])
 
   const computedActuals = computeProgrammeActuals(
@@ -84,6 +93,8 @@ export default async function ReportingPage() {
     playerTeams ?? [],
     attendance ?? [],
   )
+
+  const playerTeamLinks = (playerTeams ?? []).map((pt) => ({ playerId: pt.playerId, teamId: pt.teamId }))
 
   return (
     <div className="min-w-0 space-y-3 lg:space-y-6">
@@ -93,6 +104,9 @@ export default async function ReportingPage() {
         players={players ?? []}
         literacySessions={literacySessions ?? []}
         computedActuals={computedActuals}
+        teams={teams ?? []}
+        playerTeamLinks={playerTeamLinks}
+        technicalPlayers={technicalPlayers ?? []}
       />
     </div>
   )

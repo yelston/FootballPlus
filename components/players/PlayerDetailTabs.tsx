@@ -217,6 +217,10 @@ export function PlayerDetailTabs({ viewModel, age, canViewSensitive, canEdit, st
                 <StatRow label="Last Name" value={viewModel.lastName || 'Not set'} />
                 <StatRow label="Preferred Name" value={viewModel.preferredName || 'Not set'} />
                 <StatRow label="Player Contact" value={viewModel.contactNumber || 'Not set'} />
+                <StatRow label="Address" value={viewModel.address || 'Not set'} />
+                <StatRow label="Postal" value={viewModel.postal || 'Not set'} />
+                <StatRow label="City" value={viewModel.city || 'Not set'} />
+                <StatRow label="Country" value={viewModel.country || 'Not set'} />
                 <StatRow label="Registered" value={toDisplayDate(viewModel.registeredAt)} />
                 <StatRow label="Last Updated" value={toDisplayDate(viewModel.updatedAt)} />
               </div>
