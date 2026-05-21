@@ -170,6 +170,7 @@ export function AttendanceDialog({
     try {
       const entries = Object.entries(attendanceRecords)
       const toSave = entries.filter(([, r]) => r.attended)
+      const toDelete = entries.filter(([, r]) => !r.attended && r.exists).map(([id]) => id)
 
       const updates = toSave.map(([playerId, record]) => {
         const player = players.find((p) => p.id === playerId)
@@ -185,12 +186,21 @@ export function AttendanceDialog({
         }
       })
 
-      await supabase.from('attendance').delete().eq('date', dateString)
-
       if (updates.length > 0) {
-        // @ts-ignore - Supabase type inference issue with insert
-        const { error } = await supabase.from('attendance').insert(updates)
+        // @ts-ignore - Supabase type inference issue with upsert
+        const { error } = await supabase
+          .from('attendance')
+          .upsert(updates, { onConflict: 'date,playerId' })
         if (error) throw error
+      }
+
+      if (toDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('attendance')
+          .delete()
+          .eq('date', dateString)
+          .in('playerId', toDelete)
+        if (deleteError) throw deleteError
       }
 
       initialRecordsRef.current = { ...attendanceRecords }
