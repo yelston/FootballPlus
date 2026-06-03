@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { ReportingView } from '@/components/reporting/ReportingView'
 import { computeProgrammeActuals } from '@/lib/reportingComputed'
 import type { Database } from '@/types/database'
+import type { FundingEntryLight, StaffTimesheetRow } from '@/components/reporting/BoardGrantTab'
+import type { StaffWeeklyMetricRow } from '@/components/reporting/StaffTab'
 
 type ProgrammeMetricRow = Database['public']['Tables']['programme_metrics']['Row']
 type PlayerLiteracyRow = Pick<
@@ -41,6 +43,15 @@ interface PlayerTeamRow {
 }
 interface AttendanceRow { date: string; playerId: string; teamId: string | null; points: number }
 
+// staff_weekly_metrics is not yet in the auto-generated DB types
+async function fetchStaffOpsRows(
+  supabase: ReturnType<typeof createClient>
+): Promise<{ data: StaffWeeklyMetricRow[] | null }> {
+  const client = supabase as unknown as { from: (t: string) => { select: (c: string) => { order: (k: string) => Promise<{ data: unknown[] | null }> } } }
+  const result = await client.from('staff_weekly_metrics').select('*').order('sort_order')
+  return { data: result.data as StaffWeeklyMetricRow[] | null }
+}
+
 export default async function ReportingPage() {
   const user = await requireRole(['admin', 'board'])
   const canEdit = user.role === 'admin'
@@ -56,6 +67,9 @@ export default async function ReportingPage() {
     { data: playerTeams },
     { data: attendance },
     { data: technicalPlayers },
+    { data: fundingRaw },
+    { data: staffTimesheetRaw },
+    { data: staffOpsRaw },
   ] = await Promise.all([
     supabase.from('programme_metrics').select('*').returns<ProgrammeMetricRow[]>(),
     supabase
@@ -86,6 +100,18 @@ export default async function ReportingPage() {
       .from('players')
       .select('id, dob, technicalSprint, technicalDribbling, technicalJuggling, technicalYoyo')
       .returns<TechnicalPlayerRow[]>(),
+    supabase
+      .from('funding_register')
+      .select('programme, awarded_amount, cash_received_ytd, total_spend_charged_ytd')
+      .returns<FundingEntryLight[]>(),
+    supabase
+      .from('staff_timesheet')
+      .select('role, program, hours')
+      .gte('date', `${year}-01-01`)
+      .lte('date', `${year}-12-31`)
+      .returns<StaffTimesheetRow[]>(),
+    // staff_weekly_metrics not yet in generated DB types — cast to bypass
+    fetchStaffOpsRows(supabase),
   ])
 
   const computedActuals = computeProgrammeActuals(
@@ -107,6 +133,9 @@ export default async function ReportingPage() {
         teams={teams ?? []}
         playerTeamLinks={playerTeamLinks}
         technicalPlayers={technicalPlayers ?? []}
+        fundingEntries={fundingRaw ?? []}
+        staffTimesheetRows={staffTimesheetRaw ?? []}
+        staffOpsRows={staffOpsRaw ?? []}
       />
     </div>
   )

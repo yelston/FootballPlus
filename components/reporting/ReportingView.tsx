@@ -7,8 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ProgramTab } from './ProgramTab'
 import { LiteracyTab } from './LiteracyTab'
 import { PlayersIndexTab } from './PlayersIndexTab'
+import { BoardGrantTab } from './BoardGrantTab'
+import { StaffTab } from './StaffTab'
 import type { ProgramTabHandle } from './ProgramTab'
 import type { TechnicalPlayer, PlayerTeamLink, IndexTeam } from './PlayersIndexTab'
+import type { FundingEntryLight, StaffTimesheetRow } from './BoardGrantTab'
+import type { StaffWeeklyMetricRow } from './StaffTab'
 import type { ComputedActuals } from '@/lib/reportingComputed'
 import type { Database } from '@/types/database'
 
@@ -36,9 +40,12 @@ interface ReportingViewProps {
   teams: IndexTeam[]
   playerTeamLinks: PlayerTeamLink[]
   technicalPlayers: TechnicalPlayer[]
+  fundingEntries: FundingEntryLight[]
+  staffTimesheetRows: StaffTimesheetRow[]
+  staffOpsRows: StaffWeeklyMetricRow[]
 }
 
-export function ReportingView({ metrics, canEdit, players, literacySessions, computedActuals, teams, playerTeamLinks, technicalPlayers }: ReportingViewProps) {
+export function ReportingView({ metrics, canEdit, players, literacySessions, computedActuals, teams, playerTeamLinks, technicalPlayers, fundingEntries, staffTimesheetRows, staffOpsRows }: ReportingViewProps) {
   const [activeTab, setActiveTab] = useState('program')
   const [isDirty, setIsDirty] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -98,15 +105,16 @@ export function ReportingView({ metrics, canEdit, players, literacySessions, com
       </TabsContent>
 
       <TabsContent value="staff" className="mt-2 lg:mt-6">
-        <div className="flex items-center justify-center rounded-lg border border-dashed py-20 text-muted-foreground">
-          Coming soon
-        </div>
+        <StaffTab initialRows={staffOpsRows} canEdit={canEdit} />
       </TabsContent>
 
       <TabsContent value="board-grant" className="mt-2 lg:mt-6">
-        <div className="flex items-center justify-center rounded-lg border border-dashed py-20 text-muted-foreground">
-          Coming soon
-        </div>
+        <BoardGrantTab
+          fundingEntries={fundingEntries}
+          staffTimesheetRows={staffTimesheetRows}
+          computedActuals={computedActuals}
+          metrics={metrics}
+        />
       </TabsContent>
 
       <TabsContent value="literacy" className="mt-2 lg:mt-6">

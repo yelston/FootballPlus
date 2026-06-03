@@ -20,6 +20,7 @@ import {
   BarChart2,
   BookOpen,
   ClipboardList,
+  ScrollText,
   type LucideIcon,
 } from 'lucide-react'
 import { useSidebar } from './SidebarContext'
@@ -49,6 +50,7 @@ const navigationGroups: NavigationGroup[] = [
       { name: 'Players', href: '/players', icon: UserCircle },
       { name: 'Attendance', href: '/attendance', icon: Calendar },
       { name: 'Teams Log', href: '/teams-log', icon: ClipboardList, roles: ['admin', 'coach', 'staff'] },
+      { name: 'Funding Register', href: '/funding-register', icon: ScrollText, roles: ['admin', 'board'] },
       { name: 'Coaching', href: '/coaching', icon: BookOpen },
     ],
   },

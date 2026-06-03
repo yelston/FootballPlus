@@ -661,6 +661,66 @@ export interface Database {
         }
         Relationships: []
       }
+      funding_register: {
+        Row: {
+          id: string
+          grant_donor_name: string
+          restriction_type: string
+          programme: string
+          grant_code: string | null
+          start_date: string | null
+          end_date: string | null
+          awarded_amount: number | null
+          cash_received_ytd: number | null
+          budget_allocated_ytd: number | null
+          total_spend_charged_ytd: number | null
+          reporting_due: string | null
+          required_kpi_notes: string | null
+          other_non_labour_spend_ytd: number | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          grant_donor_name: string
+          restriction_type: string
+          programme: string
+          grant_code?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          awarded_amount?: number | null
+          cash_received_ytd?: number | null
+          budget_allocated_ytd?: number | null
+          total_spend_charged_ytd?: number | null
+          reporting_due?: string | null
+          required_kpi_notes?: string | null
+          other_non_labour_spend_ytd?: number | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          grant_donor_name?: string
+          restriction_type?: string
+          programme?: string
+          grant_code?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          awarded_amount?: number | null
+          cash_received_ytd?: number | null
+          budget_allocated_ytd?: number | null
+          total_spend_charged_ytd?: number | null
+          reporting_due?: string | null
+          required_kpi_notes?: string | null
+          other_non_labour_spend_ytd?: number | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Search, Calendar as CalendarIcon } from 'lucide-react'
+import { Plus, Search, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AttendanceDialog } from './AttendanceDialog'
 import type { Database } from '@/types/database'
 import {
@@ -62,6 +62,8 @@ interface ListViewProps {
   allowedTeamIds: string[] | null
 }
 
+const PAGE_SIZE = 30
+
 export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewProps) {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,8 +74,16 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
   const [customDateTo, setCustomDateTo] = useState('')
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
 
-  const loadAttendance = useCallback(async () => {
+  const activeDateRange = useMemo(() => {
+    if (datePreset === 'custom') {
+      return { from: customDateFrom, to: customDateTo }
+    }
+    return getDateRangeForPreset(datePreset)
+  }, [datePreset, customDateFrom, customDateTo])
+
+  const loadAttendance = useCallback(async (dateRange: { from: string; to: string }) => {
     setLoading(true)
     const supabase = createClient()
     let query = supabase
@@ -84,7 +94,13 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
         teams(name)
       `)
       .order('date', { ascending: false })
-      .limit(100)
+
+    if (dateRange.from !== '') {
+      query = query.gte('date', dateRange.from)
+    }
+    if (dateRange.to !== '') {
+      query = query.lte('date', dateRange.to)
+    }
 
     if (allowedTeamIds !== null && allowedTeamIds.length > 0) {
       query = query.in('teamId', allowedTeamIds)
@@ -103,18 +119,11 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
   }, [allowedTeamIds])
 
   useEffect(() => {
-    loadAttendance()
-  }, [loadAttendance])
+    loadAttendance(activeDateRange)
+    setCurrentPage(1)
+  }, [loadAttendance, activeDateRange])
 
-  const activeDateRange = useMemo(() => {
-    if (datePreset === 'custom') {
-      return { from: customDateFrom, to: customDateTo }
-    }
-
-    return getDateRangeForPreset(datePreset)
-  }, [datePreset, customDateFrom, customDateTo])
-
-  const filteredAttendance = attendance.filter((record) => {
+  const filteredAttendance = useMemo(() => attendance.filter((record) => {
     const matchesSearch =
       searchQuery === '' ||
       `${record.players?.firstName} ${record.players?.lastName}`
@@ -124,21 +133,31 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
     const matchesTeam =
       selectedTeam === 'all' || record.teamId === selectedTeam
 
-    const matchesDateFrom =
-      activeDateRange.from === '' || record.date >= activeDateRange.from
-    const matchesDateTo =
-      activeDateRange.to === '' || record.date <= activeDateRange.to
+    return matchesSearch && matchesTeam
+  }), [attendance, searchQuery, selectedTeam])
 
-    return matchesSearch && matchesTeam && matchesDateFrom && matchesDateTo
-  })
+  const sortedAttendance = useMemo(() =>
+    [...filteredAttendance].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [filteredAttendance]
+  )
 
-  const uniqueDates = Array.from(
-    new Set(filteredAttendance.map((r) => r.date))
-  ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+  const totalPages = Math.max(1, Math.ceil(sortedAttendance.length / PAGE_SIZE))
+  const pagedRecords = sortedAttendance.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  const pagedDates = Array.from(new Set(pagedRecords.map((r) => r.date)))
 
   const handleCreateNew = () => {
     setSelectedDate(new Date())
     setIsDialogOpen(true)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+    setCurrentPage(1)
+  }
+
+  const handleTeamChange = (value: string) => {
+    setSelectedTeam(value)
+    setCurrentPage(1)
   }
 
   return (
@@ -150,13 +169,13 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
             <Input
               placeholder="Search by player name..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9"
             />
           </div>
           <Select
             value={selectedTeam}
-            onChange={(e) => setSelectedTeam(e.target.value)}
+            onChange={(e) => handleTeamChange(e.target.value)}
             className="w-full shrink-0 sm:w-[140px]"
           >
             <option value="all">All Teams</option>
@@ -209,79 +228,109 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
         <div className="rounded-lg border p-8 text-center">
           <p className="text-muted-foreground">Loading attendance records...</p>
         </div>
-      ) : uniqueDates.length === 0 ? (
+      ) : sortedAttendance.length === 0 ? (
         <div className="rounded-lg border p-8 text-center">
           <p className="text-muted-foreground">No attendance records found.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {uniqueDates.map((date) => {
-            const dayRecords = filteredAttendance.filter((r) => r.date === date)
-            const totalPoints = dayRecords.reduce((sum, r) => sum + r.points, 0)
+        <>
+          <div className="space-y-4">
+            {pagedDates.map((date) => {
+              const dayRecords = pagedRecords.filter((r) => r.date === date)
+              const totalPoints = dayRecords.reduce((sum, r) => sum + r.points, 0)
 
-            return (
-              <Card key={date}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="h-5 w-5" />
-                      <CardTitle>{format(new Date(date), 'EEEE, MMMM d, yyyy')}</CardTitle>
-                    </div>
-                    <Badge variant="secondary">
-                      {dayRecords.length} players • {totalPoints} points
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 md:hidden">
-                    {dayRecords.map((record) => (
-                      <div key={record.id} className="rounded-md border p-3">
-                        <p className="font-semibold">
-                          {record.players?.firstName} {record.players?.lastName}
-                        </p>
-                        <p className="text-sm text-muted-foreground mb-1">
-                          {record.teams?.name || 'No team'}
-                        </p>
-                        <div className="flex gap-4 text-sm">
-                          <span>Attended: <span className="font-medium">Yes</span></span>
-                          <span>Points: <span className="font-medium">{record.points}</span></span>
-                        </div>
+              return (
+                <Card key={date}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CalendarIcon className="h-5 w-5" />
+                        <CardTitle>{format(new Date(date), 'EEEE, MMMM d, yyyy')}</CardTitle>
                       </div>
-                    ))}
-                  </div>
-                  <div className="hidden md:block rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Player</TableHead>
-                          <TableHead>Team</TableHead>
-                          <TableHead className="text-center">Attended</TableHead>
-                          <TableHead className="text-center">Points</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dayRecords.map((record) => (
-                          <TableRow key={record.id}>
-                            <TableCell className="font-medium">
-                              {record.players?.firstName} {record.players?.lastName}
-                            </TableCell>
-                            <TableCell>
-                              {record.teams?.name || (
-                                <span className="text-muted-foreground">No team</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center font-medium">Yes</TableCell>
-                            <TableCell className="text-center font-medium">{record.points}</TableCell>
+                      <Badge variant="secondary">
+                        {dayRecords.length} players • {totalPoints} points
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 md:hidden">
+                      {dayRecords.map((record) => (
+                        <div key={record.id} className="rounded-md border p-3">
+                          <p className="font-semibold">
+                            {record.players?.firstName} {record.players?.lastName}
+                          </p>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            {record.teams?.name || 'No team'}
+                          </p>
+                          <div className="flex gap-4 text-sm">
+                            <span>Attended: <span className="font-medium">Yes</span></span>
+                            <span>Points: <span className="font-medium">{record.points}</span></span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden md:block rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Player</TableHead>
+                            <TableHead>Team</TableHead>
+                            <TableHead className="text-center">Attended</TableHead>
+                            <TableHead className="text-center">Points</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+                        </TableHeader>
+                        <TableBody>
+                          {dayRecords.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell className="font-medium">
+                                {record.players?.firstName} {record.players?.lastName}
+                              </TableCell>
+                              <TableCell>
+                                {record.teams?.name || (
+                                  <span className="text-muted-foreground">No team</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center font-medium">Yes</TableCell>
+                              <TableCell className="text-center font-medium">{record.points}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages} ({sortedAttendance.length} records total)
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {selectedDate && (
@@ -293,7 +342,7 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
           players={selectedTeam === 'all' ? players : players.filter((p) => p.teamIds.includes(selectedTeam))}
           canEdit={canEdit}
           selectedTeam={selectedTeam}
-          onSuccess={loadAttendance}
+          onSuccess={() => loadAttendance(activeDateRange)}
         />
       )}
     </div>
