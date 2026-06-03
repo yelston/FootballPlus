@@ -721,6 +721,63 @@ export interface Database {
         }
         Relationships: []
       }
+      staff_weekly_metrics: {
+        Row: {
+          id: string
+          programme: string
+          cohort: string | null
+          metric_label: string
+          metric_key: string
+          sort_order: number
+          annual_target: string | null
+          q1_target: string | null
+          q2_target: string | null
+          q3_target: string | null
+          q4_target: string | null
+          this_week_actual: string | null
+          cumulative_ytd: string | null
+          status: string | null
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          programme: string
+          cohort?: string | null
+          metric_label: string
+          metric_key: string
+          sort_order?: number
+          annual_target?: string | null
+          q1_target?: string | null
+          q2_target?: string | null
+          q3_target?: string | null
+          q4_target?: string | null
+          this_week_actual?: string | null
+          cumulative_ytd?: string | null
+          status?: string | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          programme?: string
+          cohort?: string | null
+          metric_label?: string
+          metric_key?: string
+          sort_order?: number
+          annual_target?: string | null
+          q1_target?: string | null
+          q2_target?: string | null
+          q3_target?: string | null
+          q4_target?: string | null
+          this_week_actual?: string | null
+          cumulative_ytd?: string | null
+          status?: string | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

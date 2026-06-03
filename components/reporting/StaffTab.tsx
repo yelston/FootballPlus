@@ -91,10 +91,11 @@ export function StaffTab({ initialRows, canEdit }: StaffTabProps) {
     setSaveState('saving')
     const supabase = createClient()
     const now = new Date().toISOString()
-    const table = supabase.from('staff_weekly_metrics') as any
     await Promise.all(
       rows.map((r) =>
-        table
+        supabase
+          .from('staff_weekly_metrics')
+          // @ts-expect-error Supabase type resolution issue with staff_weekly_metrics
           .update({
             this_week_actual: r.this_week_actual,
             cumulative_ytd: r.cumulative_ytd,

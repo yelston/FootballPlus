@@ -187,10 +187,9 @@ export function AttendanceDialog({
       })
 
       if (updates.length > 0) {
-        // @ts-ignore - Supabase type inference issue with upsert
-        const { error } = await supabase
-          .from('attendance')
-          .upsert(updates, { onConflict: 'date,playerId' })
+        const attendanceQuery = supabase.from('attendance')
+        // @ts-expect-error Supabase type resolution issue with upsert on attendance table
+        const { error } = await attendanceQuery.upsert(updates, { onConflict: 'date,playerId' })
         if (error) throw error
       }
 
