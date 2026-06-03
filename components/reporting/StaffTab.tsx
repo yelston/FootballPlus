@@ -91,7 +91,6 @@ export function StaffTab({ initialRows, canEdit }: StaffTabProps) {
     setSaveState('saving')
     const supabase = createClient()
     const now = new Date().toISOString()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const table = supabase.from('staff_weekly_metrics') as any
     await Promise.all(
       rows.map((r) =>
