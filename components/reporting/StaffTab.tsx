@@ -95,7 +95,6 @@ export function StaffTab({ initialRows, canEdit }: StaffTabProps) {
       rows.map((r) =>
         supabase
           .from('staff_weekly_metrics')
-          // @ts-expect-error Supabase type resolution issue with staff_weekly_metrics
           .update({
             this_week_actual: r.this_week_actual,
             cumulative_ytd: r.cumulative_ytd,
