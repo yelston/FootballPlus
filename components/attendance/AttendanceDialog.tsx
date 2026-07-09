@@ -21,9 +21,9 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Select } from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -50,7 +50,7 @@ interface Player {
   teamIds: string[]
 }
 
-type AttendanceEntry = { points: number; attended: boolean; exists: boolean; id?: string }
+type AttendanceEntry = { points: number; attended: boolean; exists: boolean; teamId: string | null; id?: string }
 
 interface AttendanceDialogProps {
   open: boolean
@@ -101,17 +101,42 @@ export function AttendanceDialog({
 
   const dateString = format(date, 'yyyy-MM-dd')
 
+  const getPlayerTeams = useCallback((player: Player) => {
+    return player.teamIds
+      .map((id) => teams.find((team) => team.id === id))
+      .filter(Boolean) as Team[]
+  }, [teams])
+
+  const getTeamName = useCallback((teamId: string | null | undefined) => {
+    if (!teamId) return null
+    return teams.find((team) => team.id === teamId)?.name ?? null
+  }, [teams])
+
+  const getDefaultTeamId = useCallback((player: Player, savedTeamId?: string | null) => {
+    const playerTeams = getPlayerTeams(player)
+
+    if (savedTeamId && playerTeams.some((team) => team.id === savedTeamId)) {
+      return savedTeamId
+    }
+
+    if (selectedTeam !== 'all' && playerTeams.some((team) => team.id === selectedTeam)) {
+      return selectedTeam
+    }
+
+    return playerTeams[0]?.id ?? null
+  }, [getPlayerTeams, selectedTeam])
+
   const loadExistingAttendance = useCallback(async () => {
     const supabase = createClient()
     const { data } = await supabase
       .from('attendance')
-      .select('id, playerId, points')
+      .select('id, playerId, teamId, points')
       .eq('date', dateString)
-      .returns<Pick<AttendanceRow, 'id' | 'playerId' | 'points'>[]>()
+      .returns<Pick<AttendanceRow, 'id' | 'playerId' | 'teamId' | 'points'>[]>()
 
-    const existing: Record<string, { points: number; id: string }> = {}
+    const existing: Record<string, { points: number; teamId: string | null; id: string }> = {}
     data?.forEach((r) => {
-      existing[r.playerId] = { points: r.points, id: r.id }
+      existing[r.playerId] = { points: r.points, teamId: r.teamId, id: r.id }
     })
 
     const records: Record<string, AttendanceEntry> = {}
@@ -121,12 +146,13 @@ export function AttendanceDialog({
         points: found?.points ?? 0,
         attended: !!found,
         exists: !!found,
+        teamId: getDefaultTeamId(player, found?.teamId),
         id: found?.id,
       }
     })
     setAttendanceRecords(records)
     initialRecordsRef.current = { ...records }
-  }, [dateString, players])
+  }, [dateString, getDefaultTeamId, players])
 
   useEffect(() => {
     if (!open) {
@@ -140,6 +166,13 @@ export function AttendanceDialog({
     setAttendanceRecords((prev) => ({
       ...prev,
       [playerId]: { ...prev[playerId], points: Math.max(0, points) },
+    }))
+  }
+
+  const handleTeamChange = (playerId: string, teamId: string) => {
+    setAttendanceRecords((prev) => ({
+      ...prev,
+      [playerId]: { ...prev[playerId], teamId: teamId || null },
     }))
   }
 
@@ -172,22 +205,16 @@ export function AttendanceDialog({
       const toSave = entries.filter(([, r]) => r.attended)
       const toDelete = entries.filter(([, r]) => !r.attended && r.exists).map(([id]) => id)
 
-      const updates = toSave.map(([playerId, record]) => {
-        const player = players.find((p) => p.id === playerId)
-        return {
-          date: dateString,
-          playerId,
-          teamId:
-            selectedTeam !== 'all'
-              ? selectedTeam
-              : (player?.teamIds[0] || null),
-          points: record.points,
-          updatedByUserId: user.id,
-        }
-      })
+      const updates = toSave.map(([playerId, record]) => ({
+        date: dateString,
+        playerId,
+        teamId: record.teamId,
+        points: record.points,
+        updatedByUserId: user.id,
+      }))
 
       if (updates.length > 0) {
-        const attendanceQuery = supabase.from('attendance')
+        const attendanceQuery = supabase.from('attendance') as any
         const { error } = await attendanceQuery.upsert(updates, { onConflict: 'date,playerId' })
         if (error) throw error
       }
@@ -239,21 +266,43 @@ export function AttendanceDialog({
             {/* Mobile layout */}
             <div className="space-y-2 md:hidden">
               {players.map((player) => {
-                const record = attendanceRecords[player.id] ?? { points: 0, attended: false, exists: false }
-                const teamNames = player.teamIds
-                  .map((id) => teams.find((t) => t.id === id)?.name)
-                  .filter(Boolean)
-                  .join(', ')
+                const record = attendanceRecords[player.id] ?? {
+                  points: 0,
+                  attended: false,
+                  exists: false,
+                  teamId: getDefaultTeamId(player),
+                }
+                const playerTeams = getPlayerTeams(player)
+                const selectedTeamName = getTeamName(record.teamId)
 
                 return (
                   <div key={player.id} className="rounded-md border p-3">
                     <p className="font-semibold">
                       {player.firstName} {player.lastName}
                     </p>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {teamNames || 'No team'}
-                    </p>
-                    <div className="flex items-center gap-4">
+                    <div className="mt-2">
+                      {canEdit ? (
+                        <Select
+                          value={record.teamId ?? ''}
+                          onChange={(e) => handleTeamChange(player.id, e.target.value)}
+                          disabled={loading || playerTeams.length === 0}
+                          className="w-full"
+                          aria-label={`Team for ${player.firstName} ${player.lastName}`}
+                        >
+                          <option value="">No team</option>
+                          {playerTeams.map((team) => (
+                            <option key={team.id} value={team.id}>
+                              {team.name}
+                            </option>
+                          ))}
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {selectedTeamName || 'No team'}
+                        </p>
+                      )}
+                    </div>
+                    <div className="mt-3 flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Attended</span>
                         {canEdit ? (
@@ -302,10 +351,14 @@ export function AttendanceDialog({
                 </TableHeader>
                 <TableBody>
                   {players.map((player) => {
-                    const record = attendanceRecords[player.id] ?? { points: 0, attended: false, exists: false }
-                    const playerTeams = player.teamIds
-                      .map((id) => teams.find((t) => t.id === id))
-                      .filter(Boolean) as Team[]
+                    const record = attendanceRecords[player.id] ?? {
+                      points: 0,
+                      attended: false,
+                      exists: false,
+                      teamId: getDefaultTeamId(player),
+                    }
+                    const playerTeams = getPlayerTeams(player)
+                    const selectedTeamName = getTeamName(record.teamId)
 
                     return (
                       <TableRow key={player.id}>
@@ -313,12 +366,23 @@ export function AttendanceDialog({
                           {player.firstName} {player.lastName}
                         </TableCell>
                         <TableCell>
-                          {playerTeams.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {playerTeams.map((t) => (
-                                <Badge key={t.id} variant="secondary">{t.name}</Badge>
+                          {canEdit ? (
+                            <Select
+                              value={record.teamId ?? ''}
+                              onChange={(e) => handleTeamChange(player.id, e.target.value)}
+                              disabled={loading || playerTeams.length === 0}
+                              className="w-[180px]"
+                              aria-label={`Team for ${player.firstName} ${player.lastName}`}
+                            >
+                              <option value="">No team</option>
+                              {playerTeams.map((team) => (
+                                <option key={team.id} value={team.id}>
+                                  {team.name}
+                                </option>
                               ))}
-                            </div>
+                            </Select>
+                          ) : selectedTeamName ? (
+                            <Badge variant="secondary">{selectedTeamName}</Badge>
                           ) : (
                             <span className="text-muted-foreground">No team</span>
                           )}
