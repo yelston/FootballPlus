@@ -23,7 +23,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Select } from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -50,7 +49,7 @@ interface Player {
   teamIds: string[]
 }
 
-type AttendanceEntry = { points: number; attended: boolean; exists: boolean; teamId: string | null; id?: string }
+type AttendanceEntry = { points: number; attended: boolean; exists: boolean; playerId: string; teamId: string | null; id?: string }
 
 interface AttendanceDialogProps {
   open: boolean
@@ -112,18 +111,19 @@ export function AttendanceDialog({
     return teams.find((team) => team.id === teamId)?.name ?? null
   }, [teams])
 
-  const getDefaultTeamId = useCallback((player: Player, savedTeamId?: string | null) => {
-    const playerTeams = getPlayerTeams(player)
+  const rowKey = (playerId: string, teamId: string | null) => `${playerId}::${teamId ?? 'none'}`
 
-    if (savedTeamId && playerTeams.some((team) => team.id === savedTeamId)) {
-      return savedTeamId
+  // One row per (player, team) pair so a player on multiple teams can be marked
+  // attended for more than one team session on the same day. When a specific
+  // team is selected, only show that team's row for the player.
+  const getPlayerRows = useCallback((player: Player) => {
+    const playerTeams = selectedTeam === 'all'
+      ? getPlayerTeams(player)
+      : getPlayerTeams(player).filter((team) => team.id === selectedTeam)
+    if (playerTeams.length === 0) {
+      return [{ key: rowKey(player.id, null), teamId: null as string | null }]
     }
-
-    if (selectedTeam !== 'all' && playerTeams.some((team) => team.id === selectedTeam)) {
-      return selectedTeam
-    }
-
-    return playerTeams[0]?.id ?? null
+    return playerTeams.map((team) => ({ key: rowKey(player.id, team.id), teamId: team.id as string | null }))
   }, [getPlayerTeams, selectedTeam])
 
   const loadExistingAttendance = useCallback(async () => {
@@ -136,23 +136,26 @@ export function AttendanceDialog({
 
     const existing: Record<string, { points: number; teamId: string | null; id: string }> = {}
     data?.forEach((r) => {
-      existing[r.playerId] = { points: r.points, teamId: r.teamId, id: r.id }
+      existing[rowKey(r.playerId, r.teamId)] = { points: r.points, teamId: r.teamId, id: r.id }
     })
 
     const records: Record<string, AttendanceEntry> = {}
     players.forEach((player) => {
-      const found = existing[player.id]
-      records[player.id] = {
-        points: found?.points ?? 0,
-        attended: !!found,
-        exists: !!found,
-        teamId: getDefaultTeamId(player, found?.teamId),
-        id: found?.id,
-      }
+      getPlayerRows(player).forEach(({ key, teamId }) => {
+        const found = existing[key]
+        records[key] = {
+          points: found?.points ?? 0,
+          attended: !!found,
+          exists: !!found,
+          playerId: player.id,
+          teamId,
+          id: found?.id,
+        }
+      })
     })
     setAttendanceRecords(records)
     initialRecordsRef.current = { ...records }
-  }, [dateString, getDefaultTeamId, players])
+  }, [dateString, getPlayerRows, players])
 
   useEffect(() => {
     if (!open) {
@@ -162,24 +165,17 @@ export function AttendanceDialog({
     loadExistingAttendance()
   }, [open, loadExistingAttendance])
 
-  const handlePointsChange = (playerId: string, points: number) => {
+  const handlePointsChange = (key: string, points: number) => {
     setAttendanceRecords((prev) => ({
       ...prev,
-      [playerId]: { ...prev[playerId], points: Math.max(0, points) },
+      [key]: { ...prev[key], points: Math.max(0, points) },
     }))
   }
 
-  const handleTeamChange = (playerId: string, teamId: string) => {
+  const handleToggle = (key: string) => {
     setAttendanceRecords((prev) => ({
       ...prev,
-      [playerId]: { ...prev[playerId], teamId: teamId || null },
-    }))
-  }
-
-  const handleToggle = (playerId: string) => {
-    setAttendanceRecords((prev) => ({
-      ...prev,
-      [playerId]: { ...prev[playerId], attended: !prev[playerId].attended },
+      [key]: { ...prev[key], attended: !prev[key].attended },
     }))
   }
 
@@ -201,13 +197,13 @@ export function AttendanceDialog({
     }
 
     try {
-      const entries = Object.entries(attendanceRecords)
-      const toSave = entries.filter(([, r]) => r.attended)
-      const toDelete = entries.filter(([, r]) => !r.attended && r.exists).map(([id]) => id)
+      const records = Object.values(attendanceRecords)
+      const toSave = records.filter((r) => r.attended)
+      const toDelete = records.filter((r) => !r.attended && r.exists).map((r) => r.id as string)
 
-      const updates = toSave.map(([playerId, record]) => ({
+      const updates = toSave.map((record) => ({
         date: dateString,
-        playerId,
+        playerId: record.playerId,
         teamId: record.teamId,
         points: record.points,
         updatedByUserId: user.id,
@@ -215,7 +211,7 @@ export function AttendanceDialog({
 
       if (updates.length > 0) {
         const attendanceQuery = supabase.from('attendance') as any
-        const { error } = await attendanceQuery.upsert(updates, { onConflict: 'date,playerId' })
+        const { error } = await attendanceQuery.upsert(updates, { onConflict: 'date,playerId,teamId' })
         if (error) throw error
       }
 
@@ -223,8 +219,7 @@ export function AttendanceDialog({
         const { error: deleteError } = await supabase
           .from('attendance')
           .delete()
-          .eq('date', dateString)
-          .in('playerId', toDelete)
+          .in('id', toDelete)
         if (deleteError) throw deleteError
       }
 
@@ -265,77 +260,60 @@ export function AttendanceDialog({
           <>
             {/* Mobile layout */}
             <div className="space-y-2 md:hidden">
-              {players.map((player) => {
-                const record = attendanceRecords[player.id] ?? {
-                  points: 0,
-                  attended: false,
-                  exists: false,
-                  teamId: getDefaultTeamId(player),
-                }
-                const playerTeams = getPlayerTeams(player)
-                const selectedTeamName = getTeamName(record.teamId)
+              {players.flatMap((player) =>
+                getPlayerRows(player).map(({ key, teamId }) => {
+                  const record = attendanceRecords[key] ?? {
+                    points: 0,
+                    attended: false,
+                    exists: false,
+                    playerId: player.id,
+                    teamId,
+                  }
+                  const teamName = getTeamName(teamId)
 
-                return (
-                  <div key={player.id} className="rounded-md border p-3">
-                    <p className="font-semibold">
-                      {player.firstName} {player.lastName}
-                    </p>
-                    <div className="mt-2">
-                      {canEdit ? (
-                        <Select
-                          value={record.teamId ?? ''}
-                          onChange={(e) => handleTeamChange(player.id, e.target.value)}
-                          disabled={loading || playerTeams.length === 0}
-                          className="w-full"
-                          aria-label={`Team for ${player.firstName} ${player.lastName}`}
-                        >
-                          <option value="">No team</option>
-                          {playerTeams.map((team) => (
-                            <option key={team.id} value={team.id}>
-                              {team.name}
-                            </option>
-                          ))}
-                        </Select>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          {selectedTeamName || 'No team'}
-                        </p>
-                      )}
-                    </div>
-                    <div className="mt-3 flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Attended</span>
-                        {canEdit ? (
-                          <input
-                            type="checkbox"
-                            checked={record.attended}
-                            onChange={() => handleToggle(player.id)}
-                            disabled={loading}
-                            className="h-4 w-4 cursor-pointer accent-primary"
-                          />
-                        ) : (
-                          <span className="text-sm font-medium">{record.attended ? 'Yes' : 'No'}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Points</span>
-                        {canEdit ? (
-                          <Input
-                            type="number"
-                            min="0"
-                            value={record.points}
-                            onChange={(e) => handlePointsChange(player.id, parseInt(e.target.value) || 0)}
-                            disabled={loading}
-                            className="w-20"
-                          />
-                        ) : (
-                          <span className="font-medium">{record.points}</span>
-                        )}
+                  return (
+                    <div key={key} className="rounded-md border p-3">
+                      <p className="font-semibold">
+                        {player.firstName} {player.lastName}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {teamName || 'No team'}
+                      </p>
+                      <div className="mt-3 flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">Attended</span>
+                          {canEdit ? (
+                            <input
+                              type="checkbox"
+                              checked={record.attended}
+                              onChange={() => handleToggle(key)}
+                              disabled={loading}
+                              className="h-4 w-4 cursor-pointer accent-primary"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium">{record.attended ? 'Yes' : 'No'}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">Points</span>
+                          {canEdit ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              value={record.points}
+                              onChange={(e) => handlePointsChange(key, parseInt(e.target.value) || 0)}
+                              disabled={loading}
+                              className="w-20"
+                            />
+                          ) : (
+                            <span className="font-medium">{record.points}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              )}
             </div>
 
             {/* Desktop layout */}
@@ -350,77 +328,64 @@ export function AttendanceDialog({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {players.map((player) => {
-                    const record = attendanceRecords[player.id] ?? {
-                      points: 0,
-                      attended: false,
-                      exists: false,
-                      teamId: getDefaultTeamId(player),
-                    }
-                    const playerTeams = getPlayerTeams(player)
-                    const selectedTeamName = getTeamName(record.teamId)
+                  {players.flatMap((player) =>
+                    getPlayerRows(player).map(({ key, teamId }) => {
+                      const record = attendanceRecords[key] ?? {
+                        points: 0,
+                        attended: false,
+                        exists: false,
+                        playerId: player.id,
+                        teamId,
+                      }
+                      const teamName = getTeamName(teamId)
 
-                    return (
-                      <TableRow key={player.id}>
-                        <TableCell className="font-medium">
-                          {player.firstName} {player.lastName}
-                        </TableCell>
-                        <TableCell>
-                          {canEdit ? (
-                            <Select
-                              value={record.teamId ?? ''}
-                              onChange={(e) => handleTeamChange(player.id, e.target.value)}
-                              disabled={loading || playerTeams.length === 0}
-                              className="w-[180px]"
-                              aria-label={`Team for ${player.firstName} ${player.lastName}`}
-                            >
-                              <option value="">No team</option>
-                              {playerTeams.map((team) => (
-                                <option key={team.id} value={team.id}>
-                                  {team.name}
-                                </option>
-                              ))}
-                            </Select>
-                          ) : selectedTeamName ? (
-                            <Badge variant="secondary">{selectedTeamName}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">No team</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {canEdit ? (
-                            <div className="flex justify-center">
-                              <input
-                                type="checkbox"
-                                checked={record.attended}
-                                onChange={() => handleToggle(player.id)}
-                                disabled={loading}
-                                className="h-4 w-4 cursor-pointer accent-primary"
-                              />
-                            </div>
-                          ) : (
-                            <span className="font-medium">{record.attended ? 'Yes' : 'No'}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {canEdit ? (
-                            <div className="flex justify-center">
-                              <Input
-                                type="number"
-                                min="0"
-                                value={record.points}
-                                onChange={(e) => handlePointsChange(player.id, parseInt(e.target.value) || 0)}
-                                disabled={loading}
-                                className="w-20"
-                              />
-                            </div>
-                          ) : (
-                            <span className="font-medium">{record.points}</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
+                      return (
+                        <TableRow key={key}>
+                          <TableCell className="font-medium">
+                            {player.firstName} {player.lastName}
+                          </TableCell>
+                          <TableCell>
+                            {teamName ? (
+                              <Badge variant="secondary">{teamName}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">No team</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {canEdit ? (
+                              <div className="flex justify-center">
+                                <input
+                                  type="checkbox"
+                                  checked={record.attended}
+                                  onChange={() => handleToggle(key)}
+                                  disabled={loading}
+                                  className="h-4 w-4 cursor-pointer accent-primary"
+                                />
+                              </div>
+                            ) : (
+                              <span className="font-medium">{record.attended ? 'Yes' : 'No'}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {canEdit ? (
+                              <div className="flex justify-center">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={record.points}
+                                  onChange={(e) => handlePointsChange(key, parseInt(e.target.value) || 0)}
+                                  disabled={loading}
+                                  className="w-20"
+                                />
+                              </div>
+                            ) : (
+                              <span className="font-medium">{record.points}</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
                 </TableBody>
               </Table>
             </div>
