@@ -11,6 +11,7 @@ import type { Database } from '@/types/database'
 type AttendanceRow = {
   date: string
   points: number
+  status?: 'attended' | 'excused' | 'absent'
 }
 type PlayerRow = Database['public']['Tables']['players']['Row']
 type LiteracySessionRow = Database['public']['Tables']['literacy_sessions']['Row']
@@ -58,14 +59,15 @@ export default async function PlayerDetailPage({
     (supabase.from('players').select('*, player_teams(teamId, teams(id, name)), houses(id, name)').eq('id', params.id).single() as any),
     supabase
       .from('attendance')
-      .select('date, points')
+      .select('date, points, status')
       .eq('playerId', params.id)
       .gte('date', last30Date)
       .returns<AttendanceRow[]>(),
     supabase
       .from('attendance')
-      .select('date, points')
+      .select('date, points, status')
       .eq('playerId', params.id)
+      .eq('status', 'attended')
       .order('date', { ascending: false })
       .limit(1)
       .returns<AttendanceRow[]>(),
@@ -101,7 +103,7 @@ export default async function PlayerDetailPage({
 
   const age = differenceInYears(new Date(), new Date(player.dob))
   const attendanceRows = last30Attendance || []
-  const attendedRows = attendanceRows.filter((row) => row.points > 0)
+  const attendedRows = attendanceRows.filter((row) => (row.status ?? 'attended') === 'attended')
   const last30Total = attendanceRows.length
   const last30Attended = attendedRows.length
   const last30Pct = last30Total > 0 ? Math.round((last30Attended / last30Total) * 100) : 0

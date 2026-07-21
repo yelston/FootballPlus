@@ -26,6 +26,7 @@ import {
 } from './dateRangePresets'
 
 type AttendanceRow = Database['public']['Tables']['attendance']['Row']
+type AttendanceStatus = AttendanceRow['status']
 type PlayerRow = Database['public']['Tables']['players']['Row']
 type TeamRow = Database['public']['Tables']['teams']['Row']
 type AttendanceRecordRow = AttendanceRow & {
@@ -51,6 +52,8 @@ interface AttendanceRecord {
   playerId: string
   teamId: string | null
   points: number
+  status: AttendanceStatus
+  reason: string | null
   players?: { firstName: string; lastName: string } | null
   teams?: { name: string } | null
 }
@@ -63,6 +66,18 @@ interface ListViewProps {
 }
 
 const PAGE_SIZE = 30
+
+const getStatusLabel = (status: AttendanceStatus | null | undefined) => {
+  if (status === 'excused') return 'Excused'
+  if (status === 'absent') return 'Absent'
+  return 'Attended'
+}
+
+const getStatusCounts = (records: AttendanceRecord[]) => ({
+  attended: records.filter((r) => (r.status ?? 'attended') === 'attended').length,
+  excused: records.filter((r) => r.status === 'excused').length,
+  absent: records.filter((r) => r.status === 'absent').length,
+})
 
 export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewProps) {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
@@ -237,7 +252,11 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
           <div className="space-y-4">
             {pagedDates.map((date) => {
               const dayRecords = pagedRecords.filter((r) => r.date === date)
-              const totalPoints = dayRecords.reduce((sum, r) => sum + r.points, 0)
+              const statusCounts = getStatusCounts(dayRecords)
+              const totalPoints = dayRecords.reduce(
+                (sum, r) => sum + ((r.status ?? 'attended') === 'attended' ? r.points : 0),
+                0
+              )
 
               return (
                 <Card key={date}>
@@ -247,9 +266,12 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
                         <CalendarIcon className="h-5 w-5" />
                         <CardTitle>{format(new Date(date), 'EEEE, MMMM d, yyyy')}</CardTitle>
                       </div>
-                      <Badge variant="secondary">
-                        {dayRecords.length} players • {totalPoints} points
-                      </Badge>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Badge variant="secondary">{statusCounts.attended} attended</Badge>
+                        <Badge variant="secondary">{statusCounts.excused} excused</Badge>
+                        <Badge variant="secondary">{statusCounts.absent} absent</Badge>
+                        <Badge variant="secondary">{totalPoints} points</Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -262,9 +284,13 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
                           <p className="text-sm text-muted-foreground mb-1">
                             {record.teams?.name || 'No team'}
                           </p>
-                          <div className="flex gap-4 text-sm">
-                            <span>Attended: <span className="font-medium">Yes</span></span>
-                            <span>Points: <span className="font-medium">{record.points}</span></span>
+                          <div className="flex flex-wrap gap-4 text-sm">
+                            <span>Status: <span className="font-medium">{getStatusLabel(record.status)}</span></span>
+                            {(record.status ?? 'attended') === 'attended' ? (
+                              <span>Points: <span className="font-medium">{record.points}</span></span>
+                            ) : (
+                              <span>Reason: <span className="font-medium">{record.reason || 'No reason'}</span></span>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -275,8 +301,9 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
                           <TableRow>
                             <TableHead>Player</TableHead>
                             <TableHead>Team</TableHead>
-                            <TableHead className="text-center">Attended</TableHead>
+                            <TableHead>Status</TableHead>
                             <TableHead className="text-center">Points</TableHead>
+                            <TableHead>Reason</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -290,8 +317,11 @@ export function ListView({ teams, players, canEdit, allowedTeamIds }: ListViewPr
                                   <span className="text-muted-foreground">No team</span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-center font-medium">Yes</TableCell>
-                              <TableCell className="text-center font-medium">{record.points}</TableCell>
+                              <TableCell className="font-medium">{getStatusLabel(record.status)}</TableCell>
+                              <TableCell className="text-center font-medium">
+                                {(record.status ?? 'attended') === 'attended' ? record.points : '-'}
+                              </TableCell>
+                              <TableCell>{record.reason || <span className="text-muted-foreground">-</span>}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>

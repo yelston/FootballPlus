@@ -90,10 +90,11 @@ export function StaffTab({ initialRows, canEdit }: StaffTabProps) {
   const handleSave = useCallback(async () => {
     setSaveState('saving')
     const supabase = createClient()
+    const client = supabase as unknown as { from: (table: 'staff_weekly_metrics') => any }
     const now = new Date().toISOString()
     await Promise.all(
       rows.map((r) =>
-        supabase
+        client
           .from('staff_weekly_metrics')
           .update({
             this_week_actual: r.this_week_actual,

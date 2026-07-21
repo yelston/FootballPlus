@@ -308,6 +308,8 @@ export interface Database {
           playerId: string
           teamId: string | null
           points: number
+          status: 'attended' | 'excused' | 'absent'
+          reason: string | null
           updatedByUserId: string
           createdAt: string
         }
@@ -317,6 +319,8 @@ export interface Database {
           playerId: string
           teamId?: string | null
           points?: number
+          status?: 'attended' | 'excused' | 'absent'
+          reason?: string | null
           updatedByUserId: string
           createdAt?: string
         }
@@ -326,6 +330,8 @@ export interface Database {
           playerId?: string
           teamId?: string | null
           points?: number
+          status?: 'attended' | 'excused' | 'absent'
+          reason?: string | null
           updatedByUserId?: string
           createdAt?: string
         }

@@ -41,7 +41,13 @@ interface PlayerTeamRow {
     sitgSatisfactionRating: number | null
   } | null
 }
-interface AttendanceRow { date: string; playerId: string; teamId: string | null; points: number }
+interface AttendanceRow {
+  date: string
+  playerId: string
+  teamId: string | null
+  points: number
+  status?: 'attended' | 'excused' | 'absent'
+}
 
 // staff_weekly_metrics is not yet in the auto-generated DB types
 async function fetchStaffOpsRows(
@@ -92,9 +98,10 @@ export default async function ReportingPage() {
       .returns<PlayerTeamRow[]>(),
     supabase
       .from('attendance')
-      .select('date, playerId, teamId, points')
+      .select('date, playerId, teamId, points, status')
       .gte('date', `${year}-01-01`)
       .lte('date', `${year}-12-31`)
+      .eq('status', 'attended')
       .returns<AttendanceRow[]>(),
     supabase
       .from('players')

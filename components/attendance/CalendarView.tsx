@@ -11,6 +11,7 @@ import { AttendanceDialog } from './AttendanceDialog'
 import type { Database } from '@/types/database'
 
 type AttendanceRow = Database['public']['Tables']['attendance']['Row']
+type AttendanceStatus = AttendanceRow['status']
 
 interface Team {
   id: string
@@ -24,7 +25,14 @@ interface Player {
   teamIds: string[]
 }
 
-export type DateSubmissionSummary = { teamId: string | null; teamName: string; count: number }[]
+export type DateSubmissionSummary = {
+  teamId: string | null
+  teamName: string
+  count: number
+  attended: number
+  excused: number
+  absent: number
+}[]
 
 interface CalendarViewProps {
   teams: Team[]
@@ -36,6 +44,32 @@ interface CalendarViewProps {
 function getTeamName(teamId: string | null, teams: Team[]): string {
   if (!teamId) return 'No team'
   return teams.find((t) => t.id === teamId)?.name ?? 'Unknown'
+}
+
+function buildSubmissionSummary(
+  rows: Pick<AttendanceRow, 'date' | 'teamId' | 'status'>[],
+  teams: Team[],
+) {
+  const byDate: Record<string, Record<string | 'null', { attended: number; excused: number; absent: number }>> = {}
+  rows.forEach((row) => {
+    const d = row.date as string
+    const tid = row.teamId ?? 'null'
+    const status = (row.status ?? 'attended') as AttendanceStatus
+    if (!byDate[d]) byDate[d] = {}
+    if (!byDate[d][tid]) byDate[d][tid] = { attended: 0, excused: 0, absent: 0 }
+    byDate[d][tid][status] += 1
+  })
+
+  const next: Record<string, DateSubmissionSummary> = {}
+  Object.entries(byDate).forEach(([dateStr, counts]) => {
+    next[dateStr] = Object.entries(counts).map(([teamId, statusCounts]) => ({
+      teamId: teamId === 'null' ? null : teamId,
+      teamName: getTeamName(teamId === 'null' ? null : teamId, teams),
+      count: statusCounts.attended + statusCounts.excused + statusCounts.absent,
+      ...statusCounts,
+    }))
+  })
+  return next
 }
 
 export function CalendarView({ teams, players, canEdit, allowedTeamIds }: CalendarViewProps) {
@@ -67,32 +101,17 @@ export function CalendarView({ teams, players, canEdit, allowedTeamIds }: Calend
     const supabase = createClient()
     let query = supabase
       .from('attendance')
-      .select('date, teamId')
+      .select('date, teamId, status')
       .gte('date', rangeStart)
       .lte('date', rangeEnd)
     if (allowedTeamIds !== null) {
       query = query.in('teamId', allowedTeamIds)
     }
     query
-      .returns<Pick<AttendanceRow, 'date' | 'teamId'>[]>()
+      .returns<Pick<AttendanceRow, 'date' | 'teamId' | 'status'>[]>()
       .then(({ data }) => {
         if (cancelled || !data) return
-        const byDate: Record<string, Record<string | 'null', number>> = {}
-        data.forEach((row) => {
-          const d = row.date as string
-          const tid = row.teamId ?? 'null'
-          if (!byDate[d]) byDate[d] = {}
-          byDate[d][tid] = (byDate[d][tid] ?? 0) + 1
-        })
-        const next: Record<string, DateSubmissionSummary> = {}
-        Object.entries(byDate).forEach(([dateStr, counts]) => {
-          next[dateStr] = Object.entries(counts).map(([teamId, count]) => ({
-            teamId: teamId === 'null' ? null : teamId,
-            teamName: getTeamName(teamId === 'null' ? null : teamId, teams),
-            count,
-          }))
-        })
-        setSubmissionsByDate(next)
+        setSubmissionsByDate(buildSubmissionSummary(data, teams))
       })
     return () => {
       cancelled = true
@@ -119,37 +138,24 @@ export function CalendarView({ teams, players, canEdit, allowedTeamIds }: Calend
     const supabase = createClient()
     let query = supabase
       .from('attendance')
-      .select('date, teamId')
+      .select('date, teamId, status')
       .gte('date', rangeStart)
       .lte('date', rangeEnd)
     if (allowedTeamIds !== null) {
       query = query.in('teamId', allowedTeamIds)
     }
     query
-      .returns<Pick<AttendanceRow, 'date' | 'teamId'>[]>()
+      .returns<Pick<AttendanceRow, 'date' | 'teamId' | 'status'>[]>()
       .then(({ data }) => {
         if (!data) return
-        const byDate: Record<string, Record<string | 'null', number>> = {}
-        data.forEach((row) => {
-          const d = row.date as string
-          const tid = row.teamId ?? 'null'
-          if (!byDate[d]) byDate[d] = {}
-          byDate[d][tid] = (byDate[d][tid] ?? 0) + 1
-        })
-        const next: Record<string, DateSubmissionSummary> = {}
-        Object.entries(byDate).forEach(([dateStr, counts]) => {
-          next[dateStr] = Object.entries(counts).map(([teamId, count]) => ({
-            teamId: teamId === 'null' ? null : teamId,
-            teamName: getTeamName(teamId === 'null' ? null : teamId, teams),
-            count,
-          }))
-        })
-        setSubmissionsByDate(next)
+        setSubmissionsByDate(buildSubmissionSummary(data, teams))
       })
   }
 
   const formatSubmissionTooltip = (summary: DateSubmissionSummary) =>
-    summary.map((s) => `${s.teamName}: ${s.count} player${s.count !== 1 ? 's' : ''}`).join('\n')
+    summary
+      .map((s) => `${s.teamName}: ${s.attended} attended, ${s.excused} excused, ${s.absent} absent`)
+      .join('\n')
 
   return (
     <div className="space-y-4">
@@ -197,6 +203,9 @@ export function CalendarView({ teams, players, canEdit, allowedTeamIds }: Calend
               const rawSummary = submissionsByDate[dateStr] ?? []
               const summary = selectedTeam === 'all' ? rawSummary : rawSummary.filter(s => s.teamId === selectedTeam)
               const total = summary.reduce((sum, s) => sum + s.count, 0)
+              const attended = summary.reduce((sum, s) => sum + s.attended, 0)
+              const excused = summary.reduce((sum, s) => sum + s.excused, 0)
+              const absent = summary.reduce((sum, s) => sum + s.absent, 0)
 
               return (
                 <button
@@ -210,12 +219,21 @@ export function CalendarView({ teams, players, canEdit, allowedTeamIds }: Calend
                       {format(day, 'EEE, MMM d')}
                     </span>
                     <span className="text-sm text-muted-foreground">
-                      {total} {total === 1 ? 'player' : 'players'}
+                      {total} logged
                     </span>
                   </div>
                   {summary.length > 0 ? (
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {summary.map((s) => (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
+                        {attended} attended
+                      </span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
+                        {excused} excused
+                      </span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
+                        {absent} absent
+                      </span>
+                      {selectedTeam === 'all' && summary.map((s) => (
                         <span
                           key={s.teamId ?? 'none'}
                           className="rounded-full bg-muted px-2 py-0.5 text-xs"
@@ -280,9 +298,9 @@ export function CalendarView({ teams, players, canEdit, allowedTeamIds }: Calend
                           <span
                             key={s.teamId ?? 'none'}
                             className="truncate max-w-full text-center"
-                            title={`${s.teamName}: ${s.count}`}
+                            title={`${s.teamName}: ${s.attended} attended, ${s.excused} excused, ${s.absent} absent`}
                           >
-                            {s.teamName}: {s.count}
+                            {s.teamName}: {s.attended}/{s.excused}/{s.absent}
                           </span>
                         ))}
                         {summary.length > 3 && (

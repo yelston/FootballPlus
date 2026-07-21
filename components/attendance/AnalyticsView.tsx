@@ -25,7 +25,7 @@ import {
 type AttendanceRow = Database['public']['Tables']['attendance']['Row']
 type PlayerRow = Database['public']['Tables']['players']['Row']
 type TeamRow = Database['public']['Tables']['teams']['Row']
-type AnalyticsRecord = Pick<AttendanceRow, 'playerId' | 'points'> & {
+type AnalyticsRecord = Pick<AttendanceRow, 'playerId' | 'points' | 'status'> & {
   players: (Pick<PlayerRow, 'firstName' | 'lastName'> & { houses: { name: string } | null }) | null
   teams: Pick<TeamRow, 'name'> | null
 }
@@ -106,9 +106,11 @@ export function AnalyticsView({ teams, allowedTeamIds }: AnalyticsViewProps) {
       .select(`
         playerId,
         points,
+        status,
         players(firstName, lastName, houses(name)),
         teams(name)
       `)
+      .eq('status', 'attended')
 
     if (allowedTeamIds !== null) {
       query = query.in('teamId', allowedTeamIds)

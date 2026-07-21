@@ -64,6 +64,7 @@ export async function fetchAttendanceData(
     .select('date, playerId, teamId, points, teams(name)')
     .gte('date', from)
     .lte('date', to)
+    .eq('status', 'attended')
 
   if (!rows || rows.length === 0) {
     return { totalSessions: 0, totalPoints: 0, attendanceRate: 0, byTeam: [], trend: [] }

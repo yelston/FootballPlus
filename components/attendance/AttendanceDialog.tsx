@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -36,6 +37,8 @@ import { useIsMobile } from '@/lib/hooks/use-media-query'
 import type { Database } from '@/types/database'
 
 type AttendanceRow = Database['public']['Tables']['attendance']['Row']
+type AttendanceStatus = AttendanceRow['status']
+type AttendanceStatusValue = AttendanceStatus | ''
 
 interface Team {
   id: string
@@ -49,7 +52,15 @@ interface Player {
   teamIds: string[]
 }
 
-type AttendanceEntry = { points: number; attended: boolean; exists: boolean; playerId: string; teamId: string | null; id?: string }
+type AttendanceEntry = {
+  points: number
+  status: AttendanceStatusValue
+  reason: string
+  exists: boolean
+  playerId: string
+  teamId: string | null
+  id?: string
+}
 
 interface AttendanceDialogProps {
   open: boolean
@@ -74,6 +85,10 @@ export function AttendanceDialog({
 }: AttendanceDialogProps) {
   const router = useRouter()
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, AttendanceEntry>>({})
+  const [reasonSuggestions, setReasonSuggestions] = useState<Record<'excused' | 'absent', string[]>>({
+    excused: [],
+    absent: [],
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
@@ -113,6 +128,22 @@ export function AttendanceDialog({
 
   const rowKey = (playerId: string, teamId: string | null) => `${playerId}::${teamId ?? 'none'}`
 
+  const getStatusLabel = (status: AttendanceStatusValue) => {
+    if (status === 'attended') return 'Attended'
+    if (status === 'excused') return 'Excused'
+    if (status === 'absent') return 'Absent'
+    return 'Not selected'
+  }
+
+  const getDefaultEntry = (playerId: string, teamId: string | null): AttendanceEntry => ({
+    points: 0,
+    status: '',
+    reason: '',
+    exists: false,
+    playerId,
+    teamId,
+  })
+
   // One row per (player, team) pair so a player on multiple teams can be marked
   // attended for more than one team session on the same day. When a specific
   // team is selected, only show that team's row for the player.
@@ -130,13 +161,19 @@ export function AttendanceDialog({
     const supabase = createClient()
     const { data } = await supabase
       .from('attendance')
-      .select('id, playerId, teamId, points')
+      .select('id, playerId, teamId, points, status, reason')
       .eq('date', dateString)
-      .returns<Pick<AttendanceRow, 'id' | 'playerId' | 'teamId' | 'points'>[]>()
+      .returns<Pick<AttendanceRow, 'id' | 'playerId' | 'teamId' | 'points' | 'status' | 'reason'>[]>()
 
-    const existing: Record<string, { points: number; teamId: string | null; id: string }> = {}
+    const existing: Record<string, { points: number; teamId: string | null; id: string; status: AttendanceStatus; reason: string }> = {}
     data?.forEach((r) => {
-      existing[rowKey(r.playerId, r.teamId)] = { points: r.points, teamId: r.teamId, id: r.id }
+      existing[rowKey(r.playerId, r.teamId)] = {
+        points: r.points,
+        teamId: r.teamId,
+        id: r.id,
+        status: r.status ?? 'attended',
+        reason: r.reason ?? '',
+      }
     })
 
     const records: Record<string, AttendanceEntry> = {}
@@ -145,7 +182,8 @@ export function AttendanceDialog({
         const found = existing[key]
         records[key] = {
           points: found?.points ?? 0,
-          attended: !!found,
+          status: found?.status ?? '',
+          reason: found?.reason ?? '',
           exists: !!found,
           playerId: player.id,
           teamId,
@@ -157,13 +195,38 @@ export function AttendanceDialog({
     initialRecordsRef.current = { ...records }
   }, [dateString, getPlayerRows, players])
 
+  const loadReasonSuggestions = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('attendance')
+      .select('status, reason')
+      .in('status', ['excused', 'absent'])
+      .not('reason', 'is', null)
+      .returns<Pick<AttendanceRow, 'status' | 'reason'>[]>()
+
+    const next: Record<'excused' | 'absent', string[]> = { excused: [], absent: [] }
+    const seen: Record<'excused' | 'absent', Set<string>> = {
+      excused: new Set(),
+      absent: new Set(),
+    }
+    data?.forEach((row) => {
+      if (row.status !== 'excused' && row.status !== 'absent') return
+      const reason = row.reason?.trim()
+      if (!reason || seen[row.status].has(reason.toLowerCase())) return
+      seen[row.status].add(reason.toLowerCase())
+      next[row.status].push(reason)
+    })
+    setReasonSuggestions(next)
+  }, [])
+
   useEffect(() => {
     if (!open) {
       initialRecordsRef.current = {}
       return
     }
     loadExistingAttendance()
-  }, [open, loadExistingAttendance])
+    loadReasonSuggestions()
+  }, [open, loadExistingAttendance, loadReasonSuggestions])
 
   const handlePointsChange = (key: string, points: number) => {
     setAttendanceRecords((prev) => ({
@@ -172,10 +235,23 @@ export function AttendanceDialog({
     }))
   }
 
-  const handleToggle = (key: string) => {
+  const handleStatusChange = (key: string, status: AttendanceStatusValue) => {
+    setError(null)
     setAttendanceRecords((prev) => ({
       ...prev,
-      [key]: { ...prev[key], attended: !prev[key].attended },
+      [key]: {
+        ...prev[key],
+        status,
+        points: status === 'attended' ? prev[key].points : 0,
+        reason: status === 'excused' || status === 'absent' ? prev[key].reason : '',
+      },
+    }))
+  }
+
+  const handleReasonChange = (key: string, reason: string) => {
+    setAttendanceRecords((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], reason },
     }))
   }
 
@@ -198,14 +274,16 @@ export function AttendanceDialog({
 
     try {
       const records = Object.values(attendanceRecords)
-      const toSave = records.filter((r) => r.attended)
-      const toDelete = records.filter((r) => !r.attended && r.exists).map((r) => r.id as string)
+      const toSave = records.filter((r) => r.status)
+      const toDelete = records.filter((r) => !r.status && r.exists).map((r) => r.id as string)
 
       const updates = toSave.map((record) => ({
         date: dateString,
         playerId: record.playerId,
         teamId: record.teamId,
-        points: record.points,
+        points: record.status === 'attended' ? record.points : 0,
+        status: record.status,
+        reason: record.status === 'excused' || record.status === 'absent' ? record.reason.trim() || null : null,
         updatedByUserId: user.id,
       }))
 
@@ -245,6 +323,17 @@ export function AttendanceDialog({
         </DescriptionComponent>
       </HeaderComponent>
 
+      <datalist id="attendance-excused-reasons">
+        {reasonSuggestions.excused.map((reason) => (
+          <option key={reason} value={reason} />
+        ))}
+      </datalist>
+      <datalist id="attendance-absent-reasons">
+        {reasonSuggestions.absent.map((reason) => (
+          <option key={reason} value={reason} />
+        ))}
+      </datalist>
+
       <div className="space-y-4 py-4">
         {error && (
           <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
@@ -264,7 +353,8 @@ export function AttendanceDialog({
                 getPlayerRows(player).map(({ key, teamId }) => {
                   const record = attendanceRecords[key] ?? {
                     points: 0,
-                    attended: false,
+                    status: '',
+                    reason: '',
                     exists: false,
                     playerId: player.id,
                     teamId,
@@ -279,21 +369,25 @@ export function AttendanceDialog({
                       <p className="text-sm text-muted-foreground">
                         {teamName || 'No team'}
                       </p>
-                      <div className="mt-3 flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">Attended</span>
+                      <div className="mt-3 grid gap-3">
+                        <div className="grid gap-1">
+                          <span className="text-sm text-muted-foreground">Status</span>
                           {canEdit ? (
-                            <input
-                              type="checkbox"
-                              checked={record.attended}
-                              onChange={() => handleToggle(key)}
+                            <Select
+                              value={record.status}
+                              onChange={(e) => handleStatusChange(key, e.target.value as AttendanceStatusValue)}
                               disabled={loading}
-                              className="h-4 w-4 cursor-pointer accent-primary"
-                            />
+                            >
+                              <option value="">Select status</option>
+                              <option value="attended">Attended</option>
+                              <option value="excused">Excused</option>
+                              <option value="absent">Absent</option>
+                            </Select>
                           ) : (
-                            <span className="text-sm font-medium">{record.attended ? 'Yes' : 'No'}</span>
+                            <span className="text-sm font-medium">{getStatusLabel(record.status)}</span>
                           )}
                         </div>
+                        {record.status === 'attended' && (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-muted-foreground">Points</span>
                           {canEdit ? (
@@ -309,6 +403,23 @@ export function AttendanceDialog({
                             <span className="font-medium">{record.points}</span>
                           )}
                         </div>
+                        )}
+                        {(record.status === 'excused' || record.status === 'absent') && (
+                          <div className="grid gap-1">
+                            <span className="text-sm text-muted-foreground">Reason</span>
+                            {canEdit ? (
+                              <Input
+                                value={record.reason}
+                                onChange={(e) => handleReasonChange(key, e.target.value)}
+                                disabled={loading}
+                                list={`attendance-${record.status}-reasons`}
+                                placeholder="Enter reason"
+                              />
+                            ) : (
+                              <span className="text-sm font-medium">{record.reason || 'No reason'}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )
@@ -318,13 +429,21 @@ export function AttendanceDialog({
 
             {/* Desktop layout */}
             <div className="hidden md:block rounded-md border">
-              <Table>
+              <Table className="table-fixed">
+                <colgroup>
+                  <col className="w-[27%]" />
+                  <col className="w-[20%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[21%]" />
+                </colgroup>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Player</TableHead>
                     <TableHead>Team</TableHead>
-                    <TableHead className="text-center">Attended</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-center">Points</TableHead>
+                    <TableHead>Reason</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -332,7 +451,8 @@ export function AttendanceDialog({
                     getPlayerRows(player).map(({ key, teamId }) => {
                       const record = attendanceRecords[key] ?? {
                         points: 0,
-                        attended: false,
+                        status: '',
+                        reason: '',
                         exists: false,
                         playerId: player.id,
                         teamId,
@@ -344,30 +464,34 @@ export function AttendanceDialog({
                           <TableCell className="font-medium">
                             {player.firstName} {player.lastName}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="min-w-0">
                             {teamName ? (
-                              <Badge variant="secondary">{teamName}</Badge>
+                              <Badge variant="secondary" className="max-w-full whitespace-normal break-words">
+                                {teamName}
+                              </Badge>
                             ) : (
                               <span className="text-muted-foreground">No team</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="min-w-0">
                             {canEdit ? (
-                              <div className="flex justify-center">
-                                <input
-                                  type="checkbox"
-                                  checked={record.attended}
-                                  onChange={() => handleToggle(key)}
-                                  disabled={loading}
-                                  className="h-4 w-4 cursor-pointer accent-primary"
-                                />
-                              </div>
+                              <Select
+                                value={record.status}
+                                onChange={(e) => handleStatusChange(key, e.target.value as AttendanceStatusValue)}
+                                disabled={loading}
+                                className="w-full"
+                              >
+                                <option value="">Select status</option>
+                                <option value="attended">Attended</option>
+                                <option value="excused">Excused</option>
+                                <option value="absent">Absent</option>
+                              </Select>
                             ) : (
-                              <span className="font-medium">{record.attended ? 'Yes' : 'No'}</span>
+                              <span className="font-medium">{getStatusLabel(record.status)}</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-center">
-                            {canEdit ? (
+                          <TableCell className="min-w-0 text-center">
+                            {record.status === 'attended' && canEdit ? (
                               <div className="flex justify-center">
                                 <Input
                                   type="number"
@@ -375,11 +499,29 @@ export function AttendanceDialog({
                                   value={record.points}
                                   onChange={(e) => handlePointsChange(key, parseInt(e.target.value) || 0)}
                                   disabled={loading}
-                                  className="w-20"
+                                  className="w-full max-w-24"
                                 />
                               </div>
-                            ) : (
+                            ) : record.status === 'attended' ? (
                               <span className="font-medium">{record.points}</span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="min-w-0">
+                            {(record.status === 'excused' || record.status === 'absent') && canEdit ? (
+                              <Input
+                                value={record.reason}
+                                onChange={(e) => handleReasonChange(key, e.target.value)}
+                                disabled={loading}
+                                list={`attendance-${record.status}-reasons`}
+                                placeholder="Enter reason"
+                                className="w-full"
+                              />
+                            ) : record.status === 'excused' || record.status === 'absent' ? (
+                              <span className="block truncate text-sm">{record.reason || 'No reason'}</span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -419,7 +561,7 @@ export function AttendanceDialog({
         </Sheet>
       ) : (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
             {dialogBody}
           </DialogContent>
         </Dialog>
