@@ -13,7 +13,7 @@ import type { ProgramTabHandle } from './ProgramTab'
 import type { TechnicalPlayer, PlayerTeamLink, IndexTeam } from './PlayersIndexTab'
 import type { FundingEntryLight, StaffTimesheetRow } from './BoardGrantTab'
 import type { StaffWeeklyMetricRow } from './StaffTab'
-import type { ComputedActuals } from '@/lib/reportingComputed'
+import type { ComputedActuals, ProgrammeDiagnostics } from '@/lib/reportingComputed'
 import type { Database } from '@/types/database'
 
 type ProgrammeMetricRow = Database['public']['Tables']['programme_metrics']['Row']
@@ -37,6 +37,7 @@ interface ReportingViewProps {
   players: PlayerLiteracyRow[]
   literacySessions: LiteracySessionRow[]
   computedActuals: ComputedActuals
+  programmeDiagnostics: ProgrammeDiagnostics
   teams: IndexTeam[]
   playerTeamLinks: PlayerTeamLink[]
   technicalPlayers: TechnicalPlayer[]
@@ -45,7 +46,7 @@ interface ReportingViewProps {
   staffOpsRows: StaffWeeklyMetricRow[]
 }
 
-export function ReportingView({ metrics, canEdit, players, literacySessions, computedActuals, teams, playerTeamLinks, technicalPlayers, fundingEntries, staffTimesheetRows, staffOpsRows }: ReportingViewProps) {
+export function ReportingView({ metrics, canEdit, players, literacySessions, computedActuals, programmeDiagnostics, teams, playerTeamLinks, technicalPlayers, fundingEntries, staffTimesheetRows, staffOpsRows }: ReportingViewProps) {
   const [activeTab, setActiveTab] = useState('program')
   const [isDirty, setIsDirty] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -97,7 +98,14 @@ export function ReportingView({ metrics, canEdit, players, literacySessions, com
       </TabsList>
 
       <TabsContent value="program" className="mt-2 lg:mt-6">
-        <ProgramTab ref={programTabRef} metrics={metrics} canEdit={canEdit} onDirtyChange={setIsDirty} computedActuals={computedActuals} />
+        <ProgramTab
+          ref={programTabRef}
+          metrics={metrics}
+          canEdit={canEdit}
+          onDirtyChange={setIsDirty}
+          computedActuals={computedActuals}
+          programmeDiagnostics={programmeDiagnostics}
+        />
       </TabsContent>
 
       <TabsContent value="players-index" className="mt-2 lg:mt-6">

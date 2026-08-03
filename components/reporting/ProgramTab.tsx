@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ProgrammeSection } from './ProgrammeSection'
 import { PROGRAMME_DEFINITIONS } from './programmeDefinitions'
 import type { RowState } from './ProgrammeSection'
-import type { ComputedActuals } from '@/lib/reportingComputed'
+import type { ComputedActuals, ProgrammeDiagnostics } from '@/lib/reportingComputed'
 import type { Database } from '@/types/database'
 
 type ProgrammeMetricRow = Database['public']['Tables']['programme_metrics']['Row']
@@ -26,6 +26,7 @@ interface ProgramTabProps {
   canEdit: boolean
   onDirtyChange: (isDirty: boolean) => void
   computedActuals: ComputedActuals
+  programmeDiagnostics: ProgrammeDiagnostics
 }
 
 function buildInitialState(
@@ -51,7 +52,7 @@ function buildInitialState(
 type AllRowStates = Record<string, Record<string, RowState>>
 
 export const ProgramTab = forwardRef<ProgramTabHandle, ProgramTabProps>(
-  function ProgramTab({ metrics, canEdit, onDirtyChange, computedActuals }, ref) {
+  function ProgramTab({ metrics, canEdit, onDirtyChange, computedActuals, programmeDiagnostics }, ref) {
     const [allRowStates, setAllRowStates] = useState<AllRowStates>(() => {
       const initial: AllRowStates = {}
       for (const programme of PROGRAMME_DEFINITIONS) {
@@ -118,6 +119,7 @@ export const ProgramTab = forwardRef<ProgramTabHandle, ProgramTabProps>(
             key={programme.id}
             programme={programme}
             rowStates={allRowStates[programme.id]}
+            diagnostic={programmeDiagnostics[programme.id]}
             onFieldChange={(metricKey, field, value) =>
               handleFieldChange(programme.id, metricKey, field, value)
             }

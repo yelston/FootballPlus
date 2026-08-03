@@ -1,7 +1,7 @@
 import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { ReportingView } from '@/components/reporting/ReportingView'
-import { computeProgrammeActuals } from '@/lib/reportingComputed'
+import { computeProgrammeActuals, computeProgrammeDiagnostics } from '@/lib/reportingComputed'
 import type { Database } from '@/types/database'
 import type { FundingEntryLight, StaffTimesheetRow } from '@/components/reporting/BoardGrantTab'
 import type { StaffWeeklyMetricRow } from '@/components/reporting/StaffTab'
@@ -47,6 +47,36 @@ interface AttendanceRow {
   teamId: string | null
   points: number
   status?: 'attended' | 'excused' | 'absent'
+}
+
+const PAGE_SIZE = 1000
+
+async function fetchAttendanceRows(
+  supabase: ReturnType<typeof createClient>,
+  year: number
+): Promise<{ data: AttendanceRow[] | null }> {
+  const rows: AttendanceRow[] = []
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('attendance')
+      .select('date, playerId, teamId, points, status')
+      .gte('date', `${year}-01-01`)
+      .lte('date', `${year}-12-31`)
+      .eq('status', 'attended')
+      .order('date', { ascending: true })
+      .order('playerId', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1)
+      .returns<AttendanceRow[]>()
+
+    if (error) throw new Error(error.message)
+    if (!data || data.length === 0) break
+
+    rows.push(...data)
+    if (data.length < PAGE_SIZE) break
+  }
+
+  return { data: rows }
 }
 
 // staff_weekly_metrics is not yet in the auto-generated DB types
@@ -96,13 +126,7 @@ export default async function ReportingPage() {
       .from('player_teams')
       .select('playerId, teamId, players(id, avgTechnicalScore, progressedToHigherLevel, joinedSchoolRegionalTeam, academicImprovement, completedFullSeason, sitgPreSurveyScore, sitgPostSurveyScore, sitgSatisfactionRating)')
       .returns<PlayerTeamRow[]>(),
-    supabase
-      .from('attendance')
-      .select('date, playerId, teamId, points, status')
-      .gte('date', `${year}-01-01`)
-      .lte('date', `${year}-12-31`)
-      .eq('status', 'attended')
-      .returns<AttendanceRow[]>(),
+    fetchAttendanceRows(supabase, year),
     supabase
       .from('players')
       .select('id, dob, technicalSprint, technicalDribbling, technicalJuggling, technicalYoyo')
@@ -126,6 +150,11 @@ export default async function ReportingPage() {
     playerTeams ?? [],
     attendance ?? [],
   )
+  const programmeDiagnostics = computeProgrammeDiagnostics(
+    teams ?? [],
+    playerTeams ?? [],
+    attendance ?? [],
+  )
 
   const playerTeamLinks = (playerTeams ?? []).map((pt) => ({ playerId: pt.playerId, teamId: pt.teamId }))
 
@@ -137,6 +166,7 @@ export default async function ReportingPage() {
         players={players ?? []}
         literacySessions={literacySessions ?? []}
         computedActuals={computedActuals}
+        programmeDiagnostics={programmeDiagnostics}
         teams={teams ?? []}
         playerTeamLinks={playerTeamLinks}
         technicalPlayers={technicalPlayers ?? []}

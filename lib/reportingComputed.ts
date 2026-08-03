@@ -3,6 +3,19 @@ type PeriodKey = QuarterKey | 'ytd'
 
 export type ComputedActuals = Record<string, Record<string, Partial<Record<PeriodKey, string>>>>
 
+export interface ProgrammeDiagnostic {
+  sourceLabel: string
+  teamFound: boolean
+  linkedPlayers: number
+  attendedAttendance: number
+  populatedSourceFields: number
+  totalSourceFields: number
+  sourceFieldLabel: string
+  messages: string[]
+}
+
+export type ProgrammeDiagnostics = Record<string, ProgrammeDiagnostic>
+
 interface Team {
   id: string
   name: string
@@ -92,6 +105,119 @@ function computeSessionMetrics(
   return { sessions, avgPct, totalAttendances, distinctPlayers: allPlayers.size }
 }
 
+function countPopulatedSourceFields(players: PlayerDetail[], fields: (keyof PlayerDetail)[]): number {
+  return players.reduce((total, player) => (
+    total + fields.filter((field) => player[field] !== null).length
+  ), 0)
+}
+
+function uniquePlayerDetails(playerRows: PlayerTeamRow[]): PlayerDetail[] {
+  const players = new Map<string, PlayerDetail>()
+
+  for (const row of playerRows) {
+    if (row.players) players.set(row.players.id, row.players)
+  }
+
+  return [...players.values()]
+}
+
+function attendedRowsForTeams(attendance: AttendanceRow[], teamIds: Set<string>): AttendanceRow[] {
+  return attendance.filter(
+    (a) => (a.status ?? 'attended') === 'attended' && a.teamId !== null && teamIds.has(a.teamId),
+  )
+}
+
+function getChampionsTeams(teams: Team[]): Team[] {
+  return teams.filter((team) => team.category === 'Academy' && team.name !== 'Stay In The Game')
+}
+
+function buildSourceDiagnostic({
+  programmeId,
+  sourceLabel,
+  sourceFound,
+  sourceTeamIds,
+  playerTeams,
+  attendance,
+  sourceFields,
+  sourceFieldLabel,
+}: {
+  programmeId: string
+  sourceLabel: string
+  sourceFound: boolean
+  sourceTeamIds: Set<string>
+  playerTeams: PlayerTeamRow[]
+  attendance: AttendanceRow[]
+  sourceFields: (keyof PlayerDetail)[]
+  sourceFieldLabel: string
+}): ProgrammeDiagnostic {
+  const sourcePlayerRows = playerTeams.filter((pt) => sourceTeamIds.has(pt.teamId))
+  const sourcePlayers = uniquePlayerDetails(sourcePlayerRows)
+  const attendedAttendance = attendedRowsForTeams(attendance, sourceTeamIds).length
+  const populatedSourceFields = countPopulatedSourceFields(sourcePlayers, sourceFields)
+  const totalSourceFields = sourcePlayers.length * sourceFields.length
+  const messages: string[] = []
+
+  if (!sourceFound) {
+    messages.push(`No source found for ${sourceLabel}, so ${programmeId} actuals cannot be computed.`)
+  } else {
+    if (attendedAttendance === 0) {
+      messages.push(`No current-year attended attendance rows are linked to ${sourceLabel}.`)
+    }
+    if (populatedSourceFields === 0) {
+      messages.push(`No ${sourceFieldLabel} are populated for players linked to ${sourceLabel}.`)
+    }
+  }
+
+  return {
+    sourceLabel,
+    teamFound: sourceFound,
+    linkedPlayers: sourcePlayers.length,
+    attendedAttendance,
+    populatedSourceFields,
+    totalSourceFields,
+    sourceFieldLabel,
+    messages,
+  }
+}
+
+export function computeProgrammeDiagnostics(
+  teams: Team[],
+  playerTeams: PlayerTeamRow[],
+  attendance: AttendanceRow[],
+): ProgrammeDiagnostics {
+  const sitgTeam = teams.find((t) => t.name === 'Stay In The Game')
+  const championsTeams = getChampionsTeams(teams)
+
+  return {
+    stay_in_the_game: buildSourceDiagnostic({
+      programmeId: 'Stay In The Game',
+      sourceLabel: 'the "Stay In The Game" team',
+      sourceFound: Boolean(sitgTeam),
+      sourceTeamIds: new Set(sitgTeam ? [sitgTeam.id] : []),
+      playerTeams,
+      attendance,
+      sourceFields: ['sitgPreSurveyScore', 'sitgPostSurveyScore', 'sitgSatisfactionRating'],
+      sourceFieldLabel: 'SITG survey fields',
+    }),
+    champions: buildSourceDiagnostic({
+      programmeId: 'Champions',
+      sourceLabel: 'Academy teams excluding "Stay In The Game"',
+      sourceFound: championsTeams.length > 0,
+      sourceTeamIds: new Set(championsTeams.map((team) => team.id)),
+      playerTeams,
+      attendance,
+      sourceFields: [
+        'avgTechnicalScore',
+        'progressedToHigherLevel',
+        'joinedSchoolRegionalTeam',
+        'academicImprovement',
+        'completedFullSeason',
+      ],
+      sourceFieldLabel: 'Champions outcome fields',
+    }),
+  }
+}
+
 export function computeProgrammeActuals(
   teams: Team[],
   playerTeams: PlayerTeamRow[],
@@ -169,14 +295,15 @@ export function computeProgrammeActuals(
   }
 
   // ── Champions ───────────────────────────────────────────────────────────────
-  const champTeam = teams.find((t) => t.name === 'Champions')
+  const champTeams = getChampionsTeams(teams)
   {
     const prog = 'champions'
     result[prog] = {}
-    const champIds = new Set(champTeam ? [champTeam.id] : [])
-    const champPlayerRows = playerTeams.filter((pt) => champTeam && pt.teamId === champTeam.id)
-    const champPlayers = champPlayerRows.map((pt) => pt.players).filter(Boolean) as PlayerDetail[]
-    const enrolled = champPlayerRows.length
+    const champIds = new Set(champTeams.map((team) => team.id))
+    const champPlayerRows = playerTeams.filter((pt) => champIds.has(pt.teamId))
+    const champPlayerIds = new Set(champPlayerRows.map((pt) => pt.playerId))
+    const champPlayers = uniquePlayerDetails(champPlayerRows)
+    const enrolled = champPlayerIds.size
 
     const enrolledStr = fmt(enrolled)
     result[prog]['active_players_enrolled'] = {

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { ProgrammeDefinition } from './programmeDefinitions'
+import type { ProgrammeDiagnostic } from '@/lib/reportingComputed'
 
 type Status = 'on_track' | 'needs_attention' | 'off_track' | 'no_data'
 
@@ -42,11 +43,12 @@ export interface RowState {
 interface ProgrammeSectionProps {
   programme: ProgrammeDefinition
   rowStates: Record<string, RowState>
+  diagnostic?: ProgrammeDiagnostic
   onFieldChange: (metricKey: string, field: keyof RowState, value: string) => void
   canEdit: boolean
 }
 
-export function ProgrammeSection({ programme, rowStates, onFieldChange, canEdit }: ProgrammeSectionProps) {
+export function ProgrammeSection({ programme, rowStates, diagnostic, onFieldChange, canEdit }: ProgrammeSectionProps) {
   const [isOpen, setIsOpen] = useState(true)
 
   return (
@@ -66,8 +68,36 @@ export function ProgrammeSection({ programme, rowStates, onFieldChange, canEdit 
       </button>
 
       {isOpen && (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+        <div>
+          {diagnostic && (
+            <div className="border-b bg-muted/20 px-4 py-3">
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded border bg-background px-2 py-1 font-medium text-foreground">
+                  Source: {diagnostic.sourceLabel}
+                </span>
+                <span className="rounded border bg-background px-2 py-1 text-muted-foreground">
+                  Linked players: {diagnostic.linkedPlayers}
+                </span>
+                <span className="rounded border bg-background px-2 py-1 text-muted-foreground">
+                  Current-year attended rows: {diagnostic.attendedAttendance}
+                </span>
+                <span className="rounded border bg-background px-2 py-1 text-muted-foreground">
+                  Populated {diagnostic.sourceFieldLabel}: {diagnostic.populatedSourceFields}
+                  {diagnostic.totalSourceFields > 0 ? ` / ${diagnostic.totalSourceFields}` : ''}
+                </span>
+              </div>
+              {diagnostic.messages.length > 0 && (
+                <div className="mt-2 space-y-1 text-xs text-amber-800">
+                  {diagnostic.messages.map((message) => (
+                    <p key={message}>{message}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="w-[220px] px-4 py-2 text-left font-semibold text-foreground">Metric</th>
@@ -156,7 +186,8 @@ export function ProgrammeSection({ programme, rowStates, onFieldChange, canEdit 
                 )
               })}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       )}
     </div>
