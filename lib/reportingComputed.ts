@@ -128,7 +128,7 @@ function attendedRowsForTeams(attendance: AttendanceRow[], teamIds: Set<string>)
 }
 
 function getChampionsTeams(teams: Team[]): Team[] {
-  return teams.filter((team) => team.category === 'Academy' && team.name !== 'Stay In The Game')
+  return teams.filter((team) => team.name === 'Champions')
 }
 
 function buildSourceDiagnostic({
@@ -201,7 +201,7 @@ export function computeProgrammeDiagnostics(
     }),
     champions: buildSourceDiagnostic({
       programmeId: 'Champions',
-      sourceLabel: 'Academy teams excluding "Stay In The Game"',
+      sourceLabel: 'the "Champions" team',
       sourceFound: championsTeams.length > 0,
       sourceTeamIds: new Set(championsTeams.map((team) => team.id)),
       playerTeams,
@@ -236,14 +236,9 @@ export function computeProgrammeActuals(
     )
     const enrolled = sitgPlayerIds.size
 
-    // participants_enrolled — same for all quarters
-    const enrolledStr = fmt(enrolled)
-    result[prog]['participants_enrolled'] = {
-      q1: enrolledStr, q2: enrolledStr, q3: enrolledStr, q4: enrolledStr, ytd: enrolledStr,
-    }
-
-    // sessions_delivered + avg_attendance_pct — per quarter, YTD sum/avg
+    // participants_enrolled, sessions_delivered, avg_attendance_pct — per quarter, YTD sum/avg/distinct
     let ytdSessions = 0
+    const ytdParticipants = new Set<string>()
     for (const q of ['q1', 'q2', 'q3', 'q4'] as QuarterKey[]) {
       const m = computeSessionMetrics(sitgIds, enrolled, attendance, q)
       result[prog]['sessions_delivered'] = result[prog]['sessions_delivered'] ?? {}
@@ -251,10 +246,19 @@ export function computeProgrammeActuals(
       result[prog]['avg_attendance_pct'] = result[prog]['avg_attendance_pct'] ?? {}
       result[prog]['avg_attendance_pct'][q] = m.avgPct
       ytdSessions += m.sessions
+
+      const quarterAttendance = attendance.filter(
+        (a) => (a.status ?? 'attended') === 'attended' && a.teamId !== null && sitgIds.has(a.teamId) && getQuarter(a.date) === q,
+      )
+      const distinctParticipants = new Set(quarterAttendance.map((a) => a.playerId))
+      result[prog]['participants_enrolled'] = result[prog]['participants_enrolled'] ?? {}
+      result[prog]['participants_enrolled'][q] = fmt(distinctParticipants.size)
+      quarterAttendance.forEach((a) => ytdParticipants.add(a.playerId))
     }
     const sitgYtd = computeSessionMetrics(sitgIds, enrolled, attendance, null)
     result[prog]['sessions_delivered']['ytd'] = fmt(ytdSessions)
     result[prog]['avg_attendance_pct']['ytd'] = sitgYtd.avgPct
+    result[prog]['participants_enrolled']['ytd'] = fmt(ytdParticipants.size)
 
     // participants_completing — YTD only (≥6 sessions across the year)
     const sitgAttendance = attendance.filter(
@@ -305,13 +309,9 @@ export function computeProgrammeActuals(
     const champPlayers = uniquePlayerDetails(champPlayerRows)
     const enrolled = champPlayerIds.size
 
-    const enrolledStr = fmt(enrolled)
-    result[prog]['active_players_enrolled'] = {
-      q1: enrolledStr, q2: enrolledStr, q3: enrolledStr, q4: enrolledStr, ytd: enrolledStr,
-    }
-
-    // sessions_delivered + avg_attendance_pct
+    // active_players_enrolled, sessions_delivered, avg_attendance_pct — per quarter, YTD sum/avg/distinct
     let ytdSessions = 0
+    const ytdPlayers = new Set<string>()
     for (const q of ['q1', 'q2', 'q3', 'q4'] as QuarterKey[]) {
       const m = computeSessionMetrics(champIds, enrolled, attendance, q)
       result[prog]['sessions_delivered'] = result[prog]['sessions_delivered'] ?? {}
@@ -319,10 +319,19 @@ export function computeProgrammeActuals(
       result[prog]['avg_attendance_pct'] = result[prog]['avg_attendance_pct'] ?? {}
       result[prog]['avg_attendance_pct'][q] = m.avgPct
       ytdSessions += m.sessions
+
+      const quarterAttendance = attendance.filter(
+        (a) => (a.status ?? 'attended') === 'attended' && a.teamId !== null && champIds.has(a.teamId) && getQuarter(a.date) === q,
+      )
+      const distinctPlayers = new Set(quarterAttendance.map((a) => a.playerId))
+      result[prog]['active_players_enrolled'] = result[prog]['active_players_enrolled'] ?? {}
+      result[prog]['active_players_enrolled'][q] = fmt(distinctPlayers.size)
+      quarterAttendance.forEach((a) => ytdPlayers.add(a.playerId))
     }
     const champYtd = computeSessionMetrics(champIds, enrolled, attendance, null)
     result[prog]['sessions_delivered']['ytd'] = fmt(ytdSessions)
     result[prog]['avg_attendance_pct']['ytd'] = champYtd.avgPct
+    result[prog]['active_players_enrolled']['ytd'] = fmt(ytdPlayers.size)
 
     // Player-state metrics — same across all quarters
     const completingFull = champPlayers.filter((p) => p.completedFullSeason === true).length

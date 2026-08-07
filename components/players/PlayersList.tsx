@@ -13,10 +13,17 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { Plus, Search, ChevronLeft, ChevronRight, FileDown } from 'lucide-react'
 import { differenceInYears } from 'date-fns'
 import Link from 'next/link'
 import type { Database } from '@/types/database'
+import { exportPlayersPdf } from '@/lib/exportPlayersPdf'
 
 type PlayerTeamEntry = { teamId: string; teams: { id: string; name: string } | null }
 type Player = Database['public']['Tables']['players']['Row'] & { player_teams?: PlayerTeamEntry[] }
@@ -98,6 +105,64 @@ export function PlayersList({ initialPlayers, teams, canEdit }: PlayersListProps
     return matchesSearch && matchesTeam && matchesCategory
   }), [players, searchQuery, teamFilter, categoryFilter, teams])
 
+  // Counts per team membership — a player on 2 teams increments both teams' counts.
+  const teamCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    teams.forEach((t) => counts.set(t.id, 0))
+    let noTeam = 0
+    filteredPlayers.forEach((player) => {
+      const pts = player.player_teams ?? []
+      if (pts.length === 0) {
+        noTeam += 1
+      } else {
+        pts.forEach((pt) => {
+          counts.set(pt.teamId, (counts.get(pt.teamId) ?? 0) + 1)
+        })
+      }
+    })
+    return { counts, noTeam }
+  }, [filteredPlayers, teams])
+
+  // Counts per category, deduped per player — a player with two "Schools" teams counts once.
+  const categoryCounts = useMemo(() => {
+    const counts: { Schools: number; Academy: number } = { Schools: 0, Academy: 0 }
+    filteredPlayers.forEach((player) => {
+      const cats = new Set(
+        (player.player_teams ?? [])
+          .map((pt) => teams.find((t) => t.id === pt.teamId)?.category)
+          .filter((c): c is 'Schools' | 'Academy' => c === 'Schools' || c === 'Academy')
+      )
+      cats.forEach((c) => { counts[c] += 1 })
+    })
+    return counts
+  }, [filteredPlayers, teams])
+
+  const handleExportPdf = () => {
+    const rows = filteredPlayers.flatMap((player) => {
+      const age = differenceInYears(new Date(), new Date(player.dob))
+      const name = `${player.firstName} ${player.lastName}`
+      const pts = player.player_teams ?? []
+      if (pts.length === 0) {
+        return [{ name, age, category: 'No Team' as const, team: 'No Team' }]
+      }
+      return pts.map((pt) => {
+        const team = teams.find((t) => t.id === pt.teamId)
+        return {
+          name,
+          age,
+          category: (team?.category ?? 'No Team') as 'Schools' | 'Academy' | 'No Team',
+          team: pt.teams?.name ?? 'Unknown Team',
+        }
+      })
+    }).sort((a, b) => a.team.localeCompare(b.team) || a.name.localeCompare(b.name))
+
+    exportPlayersPdf(rows, {
+      teamCounts: teams.map((t) => ({ name: t.name, count: teamCounts.counts.get(t.id) ?? 0 })),
+      noTeamCount: teamCounts.noTeam,
+      categoryCounts,
+    })
+  }
+
   const totalPages = Math.ceil(filteredPlayers.length / PAGE_SIZE)
   const safeCurrentPage = Math.min(currentPage, Math.max(totalPages, 1))
   const paginatedPlayers = filteredPlayers.slice(
@@ -130,14 +195,25 @@ export function PlayersList({ initialPlayers, teams, canEdit }: PlayersListProps
           />
         </div>
 
-        {canEdit && (
-          <Button asChild className="w-full sm:w-auto">
-            <Link href="/players/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Player
-            </Link>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            className="flex-1 sm:flex-none"
+            onClick={handleExportPdf}
+            disabled={filteredPlayers.length === 0}
+          >
+            <FileDown className="mr-2 h-4 w-4" />
+            Export PDF
           </Button>
-        )}
+          {canEdit && (
+            <Button asChild className="flex-1 sm:flex-none">
+              <Link href="/players/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Player
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Category filter */}
@@ -188,6 +264,51 @@ export function PlayersList({ initialPlayers, teams, canEdit }: PlayersListProps
             </Button>
           ))}
         </div>
+      )}
+
+      {/* Summary: counts per team/category */}
+      {filteredPlayers.length > 0 && (
+        <Accordion type="single" collapsible className="rounded-md border bg-muted px-3">
+          <AccordionItem value="summary" className="border-b-0">
+            <AccordionTrigger className="text-sm">
+              Player Summary ({filteredPlayers.length})
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Team / Category</TableHead>
+                      <TableHead className="text-right">Players</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {teams.map((team) => (
+                      <TableRow key={team.id}>
+                        <TableCell>{team.name}</TableCell>
+                        <TableCell className="text-right">{teamCounts.counts.get(team.id) ?? 0}</TableCell>
+                      </TableRow>
+                    ))}
+                    {teamCounts.noTeam > 0 && (
+                      <TableRow>
+                        <TableCell>No Team</TableCell>
+                        <TableCell className="text-right">{teamCounts.noTeam}</TableCell>
+                      </TableRow>
+                    )}
+                    <TableRow className="border-t-2">
+                      <TableCell className="font-medium">Schools</TableCell>
+                      <TableCell className="text-right font-medium">{categoryCounts.Schools}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Academy</TableCell>
+                      <TableCell className="text-right font-medium">{categoryCounts.Academy}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       )}
 
       {/* Results */}
